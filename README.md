@@ -1,28 +1,27 @@
-# untitled1
+# skyline
 
-This template should help get you started developing with Vue 3 in Vite.
+个人云盘前端
+## 推荐IDE
 
-## Recommended IDE Setup
+[webStorm](https://www.jetbrains.com/webstorm/) + [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+## 自定义配置
 
-## Customize configuration
+查看 [Vite Configuration Reference](https://vitejs.dev/config/).
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
+## 项目开始
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### 编译和热重载开发
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+###最小化编译
 
 ```sh
 npm run build
