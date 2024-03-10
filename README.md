@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-###最小化编译
+### 最小化编译
 
 ```sh
 npm run build
