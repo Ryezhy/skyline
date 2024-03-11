@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import {computed, ref, watch} from "vue";
 
 function getCssVarName(type) {
   return `--el-box-shadow${type ? '-' : ''}${type}`
@@ -8,7 +8,18 @@ function getCssVarName(type) {
 
 import {ElMessage, ElTable} from 'element-plus'
 import axios from "axios";
-import {ArrowDown, Delete, Edit, Search, Share, Upload} from '@element-plus/icons-vue'
+import { ElNotification as notify } from "element-plus/es/components/notification/index";
+import {
+  ArrowDown,
+  Delete, DeleteFilled,
+  Document, DocumentCopy,
+  Edit, Folder, FolderOpened, Headset, List,
+  QuestionFilled, Scissor,
+  Search,
+  Share,
+  Upload,
+  VideoCamera
+} from '@element-plus/icons-vue'
 
 interface File {
   id: string
@@ -17,6 +28,43 @@ interface File {
   date: string
   size: string
 }
+
+// 假设你有这些组件，但它们应该是以某种方式导入的 Vue 组件
+// 在这里，我们使用字符串来表示预定义的 Element UI 图标名称
+const DocumentIcon = Document;
+const ArrowDownIcon = ArrowDown;
+
+function getIconName(fileType) {
+  switch (fileType) {
+    case 'Folder':
+      return Folder ;
+    case 'pdf':
+    case 'doc':
+    case 'docx':
+      // 返回对应于文档类型的图标名称或组件
+      return DocumentIcon; // 假设Element UI图标库中有一个名为'document'的图标
+    case 'jpg':
+    case 'png':
+    case 'gif':
+      // 返回对应于图片类型的图标名称或组件
+      return 'picture'; // 假设Element UI图标库中有一个名为'picture'的图标
+    case 'zip':
+    case 'rar':
+    case '7z':
+      // 返回对应于压缩文件类型的图标名称或组件
+      return ArrowDownIcon; // 直接返回图标组件
+    case 'mp3':
+    case 'wav':
+      return Headset;
+    case 'mp4':
+    case 'avi':
+      return VideoCamera;
+    default:
+      // 默认图标或处理未知类型
+      return QuestionFilled; // 假设Element UI图标库中有一个名为'default-icon'的图标
+  }
+}
+
 
 const isLoading = ref(true)
 
@@ -42,13 +90,37 @@ const handDelete = (row) => {
   const index = tableData.value.findIndex(item => item.name === row.name); // 假设每行数据都有一个唯一的 'name' 属性
   if (index !== -1) {
     tableData.value.splice(index, 1); // 删除找到的行
+    notify('删除成功')
   }
 }
 
+const handCopy = (row) => {
+  notify('复制成功')
+
+}
+
+const handUpload = (row) => {
+  notify('上传成功')
+}
+
+const handStickup = (row) => {
+  notify('粘贴成功')
+}
+
+const handCut = (row) => {
+  notify('剪切成功')
+}
 
 
  const tableData = ref<File[] >([] )
      tableData.value=[
+       {
+         id: '0',
+         name: '我的媒体音乐',
+         type: 'Folder',
+         date: '2020-09-01',
+         size: '10M',
+       },
   {
     id: '1',
     name: '黑马英语',
@@ -59,7 +131,7 @@ const handDelete = (row) => {
   {
     id: '2',
     name: '英语听力',
-    type: 'pdf',
+    type: 'mp3',
     date: '2020-09-01',
     size: '10M',
   },
@@ -102,7 +174,11 @@ fetchData();
             @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" />
-          <el-table-column label=" " width="100"/>
+          <el-table-column label=" " width="100">
+            <template #default="scope">
+            <el-icon ><component :is="getIconName(scope.row.type)"/></el-icon>
+            </template>
+          </el-table-column>
           <el-table-column label="文件名" width="200">
             <template #default="scope">{{ scope.row.name }}</template>
           </el-table-column>
@@ -117,17 +193,30 @@ fetchData();
           </el-table-column>
           <el-table-column  >
             <template #default="scope">
+              <el-button alt="打开">
+                <el-icon><FolderOpened /></el-icon>
+              </el-button>
                 <el-dropdown>
-                  <el-button type="primary">
+                  <el-button type="primary" style="margin-left: 3px">
                     <el-icon class="el-icon--center" :size="'small'"><edit /></el-icon>
                   </el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item>复制</el-dropdown-item>
-                      <el-dropdown-item disabled>剪切</el-dropdown-item>
-                      <el-dropdown-item>粘贴</el-dropdown-item>
-                      <el-dropdown-item @click="handDelete(scope.row)">删除</el-dropdown-item>
-                      <el-dropdown-item divided>回收</el-dropdown-item>
+                      <el-dropdown-item @click="handCopy(scope.row)">
+                        <el-icon><DocumentCopy /></el-icon>
+                        复制</el-dropdown-item>
+                      <el-dropdown-item disabled @click="handCut(scope.row)">
+                        <el-icon><Scissor /></el-icon>
+                        剪切</el-dropdown-item>
+                      <el-dropdown-item @click="handStickup(scope.row)">
+                        <el-icon><List /></el-icon>
+                        粘贴</el-dropdown-item>
+                      <el-dropdown-item @click="handDelete(scope.row)"><el-icon><DeleteFilled />
+                      </el-icon>
+                        删除</el-dropdown-item>
+                      <el-dropdown-item divided>
+                        <el-icon><Delete /></el-icon>
+                        回收</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>

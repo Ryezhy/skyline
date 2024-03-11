@@ -15,7 +15,7 @@
     boxShadow: `var(${getCssVarName('light')})`}"></el-input>
           </el-form-item>
           <el-form-item label="密码" prop="password">
-            <el-input type="password" v-model="ruleForm.password" autocomplete="off" placeholder="8位英文或者数字" :style="{
+            <el-input type="password" v-model="ruleForm.password" autocomplete="off"  placeholder="8位英文或者数字" :style="{
     boxShadow: `var(${getCssVarName('light')})`}"></el-input>
           </el-form-item>
           <el-form-item>
@@ -62,8 +62,8 @@ export default {
 
     return {
       ruleForm: {
-        username: '',
-        password: '',
+        username: 'testUser',
+        password: '12345678',
       },
       rules: {
         username:[
