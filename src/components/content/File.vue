@@ -1,11 +1,93 @@
+
+
+<template>
+  <div class="content" :style="{
+    boxShadow: `var(${getCssVarName('light')})`}">
+    <el-container>
+      <el-header class="head" :style="{
+    boxShadow: `var(${getCssVarName('light')})`}">文件</el-header>
+      <el-main  v-loading="isLoading">
+        <!--内容!-->
+        <el-table
+            ref="multipleTableRef"
+            :data="tableData"
+            style="width: 100%"
+            @selection-change="handleSelectionChange"
+        >
+          <el-table-column type="selection" width="55" />
+          <el-table-column label=" " width="100">
+            <template #default="scope">
+            <el-icon ><component :is="getIconName(scope.row.type)"/></el-icon>
+            </template>
+          </el-table-column>
+          <el-table-column label="文件名" width="200">
+            <template #default="scope">{{ scope.row.name }}</template>
+          </el-table-column>
+          <el-table-column property="type" label="类型" width="200">
+            <template #default="scope">{{ scope.row.type }}</template>
+          </el-table-column>
+          <el-table-column property="date" label="日期" width="250">
+            <template #default="scope">{{ scope.row.date }}</template>
+          </el-table-column>
+          <el-table-column property="size" label="大小" width="250" show-overflow-tooltip>
+            <template #default="scope">{{ scope.row.size }}</template>
+          </el-table-column>
+          <el-table-column  >
+            <template #default="scope">
+              <el-button alt="打开"  size="small" style="margin-left: 6px">
+                <el-icon><FolderOpened /></el-icon>
+              </el-button>
+                <el-dropdown>
+                  <el-button type="primary"  size="small" style="margin-left: 6px;margin-top: 0">
+                    <el-icon class="el-icon--center"><edit /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="handCopy(scope.row)">
+                        <el-icon><DocumentCopy /></el-icon>
+                        复制</el-dropdown-item>
+                      <el-dropdown-item disabled @click="handCut(scope.row)">
+                        <el-icon><Scissor /></el-icon>
+                        剪切</el-dropdown-item>
+                      <el-dropdown-item @click="handStickup(scope.row)">
+                        <el-icon><List /></el-icon>
+                        粘贴</el-dropdown-item>
+                      <el-dropdown-item @click="handDelete(scope.row)"><el-icon><DeleteFilled />
+                      </el-icon>
+                        删除</el-dropdown-item>
+                      <el-dropdown-item divided>
+                        <el-icon><Delete /></el-icon>
+                        回收</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+
+              <el-button alt="分享"  size="small" style="margin-left: 6px"  @click="handleShare(scope.row.name)">
+                <el-icon><Share /></el-icon>
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top: 20px">
+          <el-button @click="toggleSelection([tableData[0], tableData[1]])"
+          >选择1和2</el-button
+          >
+          <el-button @click="toggleSelection()">全部取消</el-button>
+        </div>
+      </el-main>
+    </el-container>
+  </div>
+
+  <!--组件!-->
+  <!--分享组件!-->
+  <ShareDialog  v-model:modelValue="showDialog" v-model:fileName="fileName" ></ShareDialog>
+
+</template>
+
+
+
 <script setup lang="ts">
 import {computed, ref, watch} from "vue";
-
-function getCssVarName(type) {
-  return `--el-box-shadow${type ? '-' : ''}${type}`
-
-}
-
 import {ElMessage, ElTable} from 'element-plus'
 import axios from "axios";
 import { ElNotification as notify } from "element-plus/es/components/notification/index";
@@ -20,6 +102,15 @@ import {
   Upload,
   VideoCamera
 } from '@element-plus/icons-vue'
+import ShareDialog from "@/components/content/Files/ShareDialog.vue";
+import {i} from "vite/dist/node/types.d-jgA8ss1A";
+
+function getCssVarName(type) {
+  return `--el-box-shadow${type ? '-' : ''}${type}`
+
+}
+
+
 
 interface File {
   id: string
@@ -34,6 +125,7 @@ interface File {
 const DocumentIcon = Document;
 const ArrowDownIcon = ArrowDown;
 
+//根据文件类型获取文件图标
 function getIconName(fileType) {
   switch (fileType) {
     case 'Folder':
@@ -65,17 +157,16 @@ function getIconName(fileType) {
   }
 }
 
-
+//网络读取标识，防止未读取数据使用云盘
 const isLoading = ref(true)
 
+//多选表格
 const multipleTableRef = ref<InstanceType<typeof ElTable>>()
 const multipleSelection = ref<File[]>([])
 const toggleSelection = (rows?: File[]) => {
   if (rows) {
     rows.forEach((row) => {
       // TODO: improvement typing when refactor table
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       multipleTableRef.value!.toggleRowSelection(row, undefined)
     })
   } else {
@@ -84,6 +175,15 @@ const toggleSelection = (rows?: File[]) => {
 }
 const handleSelectionChange = (val: File[]) => {
   multipleSelection.value = val
+}
+
+//分享的文件信息
+const fileName = ref('');
+//处理分享
+const handleShare = (name) => {
+  fileName.value  = name;
+  notify(name)
+  showDialog.value = showDialog.value === false;
 }
 
 const handDelete = (row) => {
@@ -111,16 +211,17 @@ const handCut = (row) => {
   notify('剪切成功')
 }
 
+const showDialog = ref(false)
 
- const tableData = ref<File[] >([] )
-     tableData.value=[
-       {
-         id: '0',
-         name: '我的媒体音乐',
-         type: 'Folder',
-         date: '2020-09-01',
-         size: '10M',
-       },
+const tableData = ref<File[] >([] )
+tableData.value=[
+  {
+    id: '0',
+    name: '我的媒体音乐',
+    type: 'Folder',
+    date: '2020-09-01',
+    size: '10M',
+  },
   {
     id: '1',
     name: '黑马英语',
@@ -159,80 +260,6 @@ async function fetchData() {
 fetchData();
 </script>
 
-<template>
-  <div class="content" :style="{
-    boxShadow: `var(${getCssVarName('light')})`}">
-    <el-container>
-      <el-header class="head" :style="{
-    boxShadow: `var(${getCssVarName('light')})`}">文件</el-header>
-      <el-main  v-loading="isLoading">
-        <!--内容!-->
-        <el-table
-            ref="multipleTableRef"
-            :data="tableData"
-            style="width: 100%"
-            @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column label=" " width="100">
-            <template #default="scope">
-            <el-icon ><component :is="getIconName(scope.row.type)"/></el-icon>
-            </template>
-          </el-table-column>
-          <el-table-column label="文件名" width="200">
-            <template #default="scope">{{ scope.row.name }}</template>
-          </el-table-column>
-          <el-table-column property="type" label="类型" width="200">
-            <template #default="scope">{{ scope.row.type }}</template>
-          </el-table-column>
-          <el-table-column property="date" label="日期" width="250">
-            <template #default="scope">{{ scope.row.date }}</template>
-          </el-table-column>
-          <el-table-column property="size" label="大小" width="250" show-overflow-tooltip>
-            <template #default="scope">{{ scope.row.size }}</template>
-          </el-table-column>
-          <el-table-column  >
-            <template #default="scope">
-              <el-button alt="打开">
-                <el-icon><FolderOpened /></el-icon>
-              </el-button>
-                <el-dropdown>
-                  <el-button type="primary" style="margin-left: 3px">
-                    <el-icon class="el-icon--center" :size="'small'"><edit /></el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item @click="handCopy(scope.row)">
-                        <el-icon><DocumentCopy /></el-icon>
-                        复制</el-dropdown-item>
-                      <el-dropdown-item disabled @click="handCut(scope.row)">
-                        <el-icon><Scissor /></el-icon>
-                        剪切</el-dropdown-item>
-                      <el-dropdown-item @click="handStickup(scope.row)">
-                        <el-icon><List /></el-icon>
-                        粘贴</el-dropdown-item>
-                      <el-dropdown-item @click="handDelete(scope.row)"><el-icon><DeleteFilled />
-                      </el-icon>
-                        删除</el-dropdown-item>
-                      <el-dropdown-item divided>
-                        <el-icon><Delete /></el-icon>
-                        回收</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div style="margin-top: 20px">
-          <el-button @click="toggleSelection([tableData[0], tableData[1]])"
-          >选择1和2</el-button
-          >
-          <el-button @click="toggleSelection()">全部取消</el-button>
-        </div>
-      </el-main>
-    </el-container>
-  </div>
-</template>
 
 <style scoped>
 .content{
