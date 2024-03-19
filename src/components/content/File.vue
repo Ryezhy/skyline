@@ -21,10 +21,10 @@
             </template>
           </el-table-column>
           <el-table-column label="文件名" width="200">
-            <template #default="scope">{{ scope.row.name }}</template>
+            <template #default="scope">{{ FileName(scope.row.name, scope.row.type)}}</template>
           </el-table-column>
           <el-table-column property="type" label="类型" width="200">
-            <template #default="scope">{{ scope.row.type }}</template>
+            <template #default="scope">{{ typeName(scope.row.type) }}</template>
           </el-table-column>
           <el-table-column property="date" label="日期" width="250">
             <template #default="scope">{{ scope.row.date }}</template>
@@ -32,11 +32,19 @@
           <el-table-column property="size" label="大小" width="250" show-overflow-tooltip>
             <template #default="scope">{{ scope.row.size }}</template>
           </el-table-column>
-          <el-table-column  >
+          <el-table-column   label="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;操作">
             <template #default="scope">
-              <el-button alt="打开"  size="small" style="margin-left: 6px">
-                <el-icon><FolderOpened /></el-icon>
-              </el-button>
+              <el-tooltip
+                  class="box-item"
+                  effect="dark"
+                  content="打开"
+                  placement="bottom"
+              >
+                <el-button  size="small" style="margin-left: 6px">
+                  <el-icon><FolderOpened /></el-icon>
+                </el-button>
+              </el-tooltip>
+
                 <el-dropdown>
                   <el-button type="primary"  size="small" style="margin-left: 6px;margin-top: 0">
                     <el-icon class="el-icon--center"><edit /></el-icon>
@@ -61,10 +69,16 @@
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
-
-              <el-button alt="分享"  size="small" style="margin-left: 6px"  @click="handleShare(scope.row.name)">
+              <el-tooltip
+                  class="box-item"
+                  effect="dark"
+                  content="分享"
+                  placement="bottom"
+              >
+              <el-button alt="分享"  size="small" style="margin-left: 6px"  @click="handleShare(scope.row.name,scope.row.type)">
                 <el-icon><Share /></el-icon>
               </el-button>
+              </el-tooltip>
             </template>
           </el-table-column>
         </el-table>
@@ -180,9 +194,14 @@ const handleSelectionChange = (val: File[]) => {
 //分享的文件信息
 const fileName = ref('');
 //处理分享
-const handleShare = (name) => {
-  fileName.value  = name;
-  notify(name)
+const handleShare = (name,type) => {
+  if(type==='Folder'){
+    fileName.value  = name+"(文件夹)"
+  }
+  else {
+    fileName.value  = name+'.'+type;
+
+  }
   showDialog.value = showDialog.value === false;
 }
 
@@ -209,6 +228,47 @@ const handStickup = (row) => {
 
 const handCut = (row) => {
   notify('剪切成功')
+}
+
+const FileName = (name,type)=>{
+  if(type==='Folder'){
+    return name
+  }
+  else {
+    return name+'.'+type;
+  }
+}
+
+const typeName = (type) => {
+  if(type==='Folder'){
+    return '文件夹'
+  }
+  else {
+    switch (type)
+    {
+      case 'pdf':
+      case 'doc':
+      case 'docx':
+          return '文档'
+      case 'jpg':
+      case 'png':
+      case 'gif':
+        return '图片'
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return '压缩文件'
+      case 'mp3':
+      case 'wav':
+        return '音频'
+      case 'mp4':
+      case 'avi':
+        return '视频'
+      default:
+        return '未知类型'
+    }
+  }
+
 }
 
 const showDialog = ref(false)
