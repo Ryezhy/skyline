@@ -8,80 +8,101 @@
     boxShadow: `var(${getCssVarName('light')})`}">文件</el-header>
       <el-main  v-loading="isLoading">
         <!--内容!-->
-        <el-table
-            ref="multipleTableRef"
-            :data="tableData"
-            style="width: 100%"
-            @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column label=" " width="100">
-            <template #default="scope">
-            <el-icon ><component :is="getIconName(scope.row.type)"/></el-icon>
-            </template>
-          </el-table-column>
-          <el-table-column label="文件名" width="200">
-            <template #default="scope">{{ FileName(scope.row.name, scope.row.type)}}</template>
-          </el-table-column>
-          <el-table-column property="type" label="类型" width="200">
-            <template #default="scope">{{ typeName(scope.row.type) }}</template>
-          </el-table-column>
-          <el-table-column property="date" label="日期" width="250">
-            <template #default="scope">{{ scope.row.date }}</template>
-          </el-table-column>
-          <el-table-column property="size" label="大小" width="250" show-overflow-tooltip>
-            <template #default="scope">{{ scope.row.size }}</template>
-          </el-table-column>
-          <el-table-column   label="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;操作">
-            <template #default="scope">
-              <el-tooltip
-                  class="box-item"
-                  effect="dark"
-                  content="打开"
-                  placement="bottom"
-              >
-                <el-button  size="small" style="margin-left: 6px">
-                  <el-icon><FolderOpened /></el-icon>
-                </el-button>
-              </el-tooltip>
+            <el-table
+                ref="multipleTableRef"
+                :data="paginatedData"
+                style="width: 100%"
+                @selection-change="handleSelectionChange"
+            >
+              <el-table-column type="selection" width="55" />
+              <el-table-column label=" " width="100">
+                <template #default="scope">
+                  <el-icon ><component :is="getIconName(scope.row.type)"/></el-icon>
+                </template>
+              </el-table-column>
+              <el-table-column label="文件名" width="200">
+                <template #default="scope">{{ FileName(scope.row.name, scope.row.type)}}</template>
+              </el-table-column>
+              <el-table-column property="type" label="类型" width="200">
+                <template #default="scope">{{ typeName(scope.row.type) }}</template>
+              </el-table-column>
+              <el-table-column property="date" label="日期" width="250">
+                <template #default="scope">{{ scope.row.date }}</template>
+              </el-table-column>
+              <el-table-column property="size" label="大小" width="250" show-overflow-tooltip>
+                <template #default="scope">{{ scope.row.size }}</template>
+              </el-table-column>
+              <el-table-column   label="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;操作">
+                <template #default="scope">
+                  <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      content="打开"
+                      placement="bottom"
+                  >
+                    <el-button  size="small" style="margin-left: 6px">
+                      <el-icon><FolderOpened /></el-icon>
+                    </el-button>
+                  </el-tooltip>
 
-                <el-dropdown>
-                  <el-button type="primary"  size="small" style="margin-left: 6px;margin-top: 0">
-                    <el-icon class="el-icon--center"><edit /></el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item @click="handCopy(scope.row)">
-                        <el-icon><DocumentCopy /></el-icon>
-                        复制</el-dropdown-item>
-                      <el-dropdown-item disabled @click="handCut(scope.row)">
-                        <el-icon><Scissor /></el-icon>
-                        剪切</el-dropdown-item>
-                      <el-dropdown-item @click="handStickup(scope.row)">
-                        <el-icon><List /></el-icon>
-                        粘贴</el-dropdown-item>
-                      <el-dropdown-item @click="handDelete(scope.row)"><el-icon><DeleteFilled />
-                      </el-icon>
-                        删除</el-dropdown-item>
-                      <el-dropdown-item divided>
-                        <el-icon><Delete /></el-icon>
-                        回收</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              <el-tooltip
-                  class="box-item"
-                  effect="dark"
-                  content="分享"
-                  placement="bottom"
-              >
-              <el-button alt="分享"  size="small" style="margin-left: 6px"  @click="handleShare(scope.row.name,scope.row.type)">
-                <el-icon><Share /></el-icon>
-              </el-button>
-              </el-tooltip>
-            </template>
-          </el-table-column>
-        </el-table>
+                  <el-dropdown>
+                    <el-button type="primary"  size="small" style="margin-left: 6px;margin-top: 0">
+                      <el-icon class="el-icon--center"><edit /></el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="handCopy(scope.row)">
+                          <el-icon><DocumentCopy /></el-icon>
+                          复制</el-dropdown-item>
+                        <el-dropdown-item disabled @click="handCut(scope.row)">
+                          <el-icon><Scissor /></el-icon>
+                          剪切</el-dropdown-item>
+                        <el-dropdown-item @click="handStickup(scope.row)">
+                          <el-icon><List /></el-icon>
+                          粘贴</el-dropdown-item>
+                        <el-dropdown-item @click="handDelete(scope.row)"><el-icon><DeleteFilled />
+                        </el-icon>
+                          删除</el-dropdown-item>
+                        <el-dropdown-item divided>
+                          <el-icon><Delete /></el-icon>
+                          回收</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                  <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      content="分享"
+                      placement="bottom"
+                  >
+                    <el-button alt="分享"  size="small" style="margin-left: 6px"  @click="handleShare(scope.row.name,scope.row.type)">
+                      <el-icon><Share /></el-icon>
+                    </el-button>
+
+                  </el-tooltip>
+                  <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      content="下载"
+                      placement="bottom"
+                  >
+                    <el-button  size="small" style="margin-left: 6px">
+                      <el-icon><Download /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+            </el-table>
+          <el-pagination
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              :current-page="currentPage"
+              :page-sizes="[5, 10,15, 20]"
+              :page-size="pageSize"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="tableData.length"
+              style="margin-top: 8px"
+          />
         <div style="margin-top: 20px">
           <el-button @click="toggleSelection([tableData[0], tableData[1]])"
           >选择1和2</el-button
@@ -108,13 +129,13 @@ import { ElNotification as notify } from "element-plus/es/components/notificatio
 import {
   ArrowDown,
   Delete, DeleteFilled,
-  Document, DocumentCopy,
-  Edit, Folder, FolderOpened, Headset, List,
+  Document, DocumentCopy, Download,
+  Edit, Folder, FolderOpened, Headset, List, Picture,
   QuestionFilled, Scissor,
   Search,
   Share,
   Upload,
-  VideoCamera
+  VideoCamera, Wallet
 } from '@element-plus/icons-vue'
 import ShareDialog from "@/components/content/Files/ShareDialog.vue";
 import {i} from "vite/dist/node/types.d-jgA8ss1A";
@@ -147,20 +168,28 @@ function getIconName(fileType) {
     case 'pdf':
     case 'doc':
     case 'docx':
+    case 'xls':
+    case 'txt':
+    case 'xml':
+    case 'ppt':
+    case 'xlsx':
+    case 'pptx':
       // 返回对应于文档类型的图标名称或组件
       return DocumentIcon; // 假设Element UI图标库中有一个名为'document'的图标
     case 'jpg':
     case 'png':
     case 'gif':
       // 返回对应于图片类型的图标名称或组件
-      return 'picture'; // 假设Element UI图标库中有一个名为'picture'的图标
+      return Picture; // 假设Element UI图标库中有一个名为'picture'的图标
     case 'zip':
     case 'rar':
     case '7z':
       // 返回对应于压缩文件类型的图标名称或组件
-      return ArrowDownIcon; // 直接返回图标组件
+      return Wallet;
     case 'mp3':
+    case 'flac':
     case 'wav':
+    case 'ogg':
       return Headset;
     case 'mp4':
     case 'avi':
@@ -205,6 +234,25 @@ const handleShare = (name,type) => {
   showDialog.value = showDialog.value === false;
 }
 
+const currentPage = ref(1); // 当前页码
+const pageSize = ref(10); // 每页显示的条目数
+const paginatedData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return tableData.value.slice(start, end);
+});//将数据分页
+
+//页长度更改
+const handleSizeChange = (val) => {
+  pageSize.value = val;
+  currentPage.value = 1; // 当每页条目数变化时，通常回到第一页
+};
+
+//分页
+const handleCurrentChange = (val) => {
+  currentPage.value = val;
+};
+
 const handDelete = (row) => {
   const index = tableData.value.findIndex(item => item.name === row.name); // 假设每行数据都有一个唯一的 'name' 属性
   if (index !== -1) {
@@ -231,7 +279,7 @@ const handCut = (row) => {
 }
 
 const FileName = (name,type)=>{
-  if(type==='Folder'){
+  if(type==='Folder'||type===''){
     return name
   }
   else {
@@ -249,6 +297,12 @@ const typeName = (type) => {
       case 'pdf':
       case 'doc':
       case 'docx':
+      case 'xls':
+      case 'txt':
+      case 'xml':
+      case 'ppt':
+      case 'xlsx':
+      case 'pptx':
           return '文档'
       case 'jpg':
       case 'png':
@@ -264,8 +318,10 @@ const typeName = (type) => {
       case 'mp4':
       case 'avi':
         return '视频'
+      case '':
+        return '文件'
       default:
-        return '未知类型'
+        return type
     }
   }
 
@@ -304,7 +360,8 @@ async function fetchData() {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
-    const response = await axios.get('https://mock.getapi.run/mock/a09e3-1709345684677-4b2c-b05baad2//get/data');
+    const response = await axios.get('http://127.0.0.1:8080/files');
+    tableData.value = response.data;
     // 数据加载成功，显示消息并设置 isLoading 为 false
     ElMessage.success('数据加载成功');
     isLoading.value = false;

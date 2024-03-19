@@ -1,5 +1,6 @@
 <template>
   <el-dialog
+      class="dialog"
       v-model="internalDialogVisible"
       :title="title"
       width="500"
