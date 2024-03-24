@@ -146,7 +146,7 @@
                   <template #title>
                     <span @click="$router.push('../index/about')">关于</span></template>
                 </el-menu-item>
-                <el-menu-item index="7" @click="$router.push('../login')">
+                <el-menu-item index="7" @click="exit ">
                   <el-icon :size="22"><SwitchButton /></el-icon>
                   <template #title>退出</template>
                 </el-menu-item>
@@ -244,13 +244,21 @@ const handleClose = (key: string, keyPath: string[]) => {
 
 
 import { ElMessageBox } from 'element-plus'
+import {useRouter} from "vue-router";
 
 const drawer = ref(false)
 const drawer2 = ref(false)
 const direction = ref('rtl')
 const radio1 = ref('Option 1')
+const router = useRouter()
 const handleClose1 = (done: () => void) => {
         done()
+}
+
+const exit = () => {
+  localStorage.removeItem('rememberMe');
+  router.push('../login')
+
 }
 function cancelClick1() {
   drawer2.value = false

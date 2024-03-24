@@ -30,37 +30,67 @@ function getCssVarName(type) {
 }
 
 const Data = ref({
-  name:'null',
-  nickname:'null',
-  tag:'null',
-  phone:'null',
+  name:'error',
+  nickname:'error',
+  role:'普通用户',
+  phone:'1300000000',
+  eMail:'null',
   capacity: 0,
+  status:'异常',
   spaceSize:1024,
+  signature:'',
+  curren_capability:1024
 })
 
 // 模拟异步数据加载函数
 async function fetchData() {
-  try {
-    // 模拟数据加载过程
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    let user = {
+      username: localStorage.getItem('username'),
+      password: localStorage.getItem('password')
+    };
     // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
-    const response = await axios.get('https://mock.getapi.run/mock/a09e3-1709345684677-4b2c-b05baad2//get/data');
-    // 数据加载成功，显示消息并设置 isLoading 为 false
-    ElMessage.success('数据加载成功');
-    isLoading.value = false;
-    Data.value.name = response.data.name
-    Data.value.tag = response.data.tag
-    Data.value.capacity = response.data.capacity
-    Data.value.spaceSize = response.data.spaceSize
-    Data.value.phone = response.data.phone
-    Data.value.nickname = response.data.nickname
-  } catch (error) {
-    // 数据加载失败，显示错误消息并设置 isLoading 为 false
-    ElMessage.error('数据加载失败');
-    console.error(error);
-    isLoading.value = false;
-  }
+    axios.post('http://localhost:8080/getUserInfo', user)
+        .then(response => {
+          // 检查HTTP状态码
+          if (response.status === 200) {
+            // 登录成功
+            console.log('数据加载成功');
+            ElMessage.success('数据加载成功');
+            // 数据加载成功，显示消息并设置 isLoading 为 false
+            isLoading.value = false;
+            Data.value.name = response.data.name
+            Data.value.role = response.data.role
+            Data.value.capacity = response.data.capacity
+            Data.value.spaceSize = response.data.spaceSize
+            Data.value.phone = response.data.phone
+            Data.value.nickname = response.data.nickname
+            Data.value.eMail = response.data.email
+            Data.value.status  = response.data.status
+            Data.value.signature = response.data.signature
+            Data.value.curren_capability = response.data.curren_capability
+
+          } else {
+            // 其他未知错误
+            console.log('发生未知错误，请重试');
+          }
+        })
+        .catch(error => {
+          if (error.response.status === 401) {
+            // 登录失败，账户或密码错误
+            notify("登录失败，账户或密码错误");
+            console.log('登录失败，账户或密码错误');
+            // 数据加载失败，显示错误消息并设置 isLoading 为 false
+            ElMessage.error('数据加载失败');
+            console.error(error);
+            isLoading.value = false;
+          } else {
+            // 如果请求失败，处理错误
+            // 这里通常处理网络错误、超时等异常情况
+            notify("登录失败，请求出错");
+            console.log('登录失败，请求出错', error);
+          }
+
+        });
 }
 
 // 在组件加载时开始加载数据
@@ -89,7 +119,7 @@ fetchData();
             </el-row>
             <el-row>
               <el-tag   type="danger" style="text-align: center;vertical-align: center;line-height: 4;font-size: 18px;" >
-                <span v-text="Data.tag"></span>
+                <span v-text="Data.role"></span>
               </el-tag>
             </el-row>
           </el-col>
@@ -98,15 +128,15 @@ fetchData();
           </el-col>
           <el-col :span="6" >
               <el-progress
-                :percentage="(Data.spaceSize-Data.capacity)*100/ Data.spaceSize"
+                :percentage="(Data.curren_capability)*100/Data.capacity"
                 :stroke-width="18"
                 striped
                 striped-flow
               />
           </el-col>
           <el-col :span="7" :offset="15">容量：
-            <el-text size="large" v-text="Data.capacity"></el-text>MB |
-            <el-text size="large" v-text="Data.spaceSize"></el-text>MB
+            <el-text size="large" v-text="Data.curren_capability"></el-text>MB |
+            <el-text size="large" v-text="Data.capacity"></el-text>MB
           </el-col>
         </el-row>
           <el-divider></el-divider>
@@ -130,7 +160,7 @@ fetchData();
                  <el-tag size="small">在线版</el-tag>
                </el-descriptions-item>
                <el-descriptions-item label="签名">
-                 考研、考公、专升本等资料加v@vsjdf
+                 <el-text v-text="Data.signature"></el-text>
                </el-descriptions-item>
              </el-descriptions>
            </el-col>

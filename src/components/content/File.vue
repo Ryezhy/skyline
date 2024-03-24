@@ -6,8 +6,30 @@
     <el-container>
       <el-header class="head" :style="{
     boxShadow: `var(${getCssVarName('light')})`}">文件</el-header>
+      <el-row style="margin-left: 4px">
+        <el-col :span="2" :offset="0">
+          <el-button size="small" style="margin-top: -10px" @click="handleRouterBack" >返回上一级</el-button>
+        </el-col>
+        <el-col :span="10">
+          <el-breadcrumb >
+            <el-breadcrumb-item
+                v-for="(item, index) in formattedBreadcrumbItems"
+                :key="index"
+                :class="{ 'last-breadcrumb-item': index === formattedBreadcrumbItems.length - 1 }"
+                @click="handleRouterClick(item, index)"
+            >
+              {{ item }}
+            </el-breadcrumb-item>
+          </el-breadcrumb>
+        </el-col>
+        <el-col :span="5" :offset="7" style="">
+          <el-tag  style="margin-top: -10px">查找:</el-tag>
+          <el-input label="查找" style=" margin-top: -10px;margin-left:10px;width: 200px;"></el-input>
+        </el-col>
+      </el-row>
       <el-main  v-loading="isLoading">
         <!--内容!-->
+
             <el-table
                 ref="multipleTableRef"
                 :data="paginatedData"
@@ -40,7 +62,7 @@
                       content="打开"
                       placement="bottom"
                   >
-                    <el-button  size="small" style="margin-left: 6px">
+                    <el-button  size="small" style="margin-left: 6px" @click="openFile(scope.row)">
                       <el-icon><FolderOpened /></el-icon>
                     </el-button>
                   </el-tooltip>
@@ -127,7 +149,7 @@ import {ElMessage, ElTable} from 'element-plus'
 import axios from "axios";
 import { ElNotification as notify } from "element-plus/es/components/notification/index";
 import {
-  ArrowDown,
+  ArrowDown, ArrowRight,
   Delete, DeleteFilled,
   Document, DocumentCopy, Download,
   Edit, Folder, FolderOpened, Headset, List, Picture,
@@ -220,6 +242,30 @@ const handleSelectionChange = (val: File[]) => {
   multipleSelection.value = val
 }
 
+// 定义响应式状态来存储路径数组
+const fileRouter = ref(['考研资料', '408', '数据结构', '第一章', '算法']);
+
+// 计算属性来格式化路径数组
+const formattedBreadcrumbItems = computed(() => {
+  const items = [...fileRouter.value]; // 创建数组的一个副本
+  if (items.length > 3) {
+    // 如果路径段数超过三段，只保留前三段，并添加省略号
+    const lastThreeItems = items.slice(-3); // 获取最后三段
+    return ['...'].concat(lastThreeItems); // 在前面添加省略号
+  }
+  return items;
+});
+const handleRouterClick= (item,index) => {
+}
+
+const handleRouterBack = () => {
+  if(fileRouter.value.length>1){
+    fileRouter.value.pop();
+  }
+}
+
+
+
 //分享的文件信息
 const fileName = ref('');
 //处理分享
@@ -253,6 +299,16 @@ const handleCurrentChange = (val) => {
   currentPage.value = val;
 };
 
+const openFile = (item) => {
+  console.log(item.type)
+  if(item.type==='Folder'){
+    notify('打开文件')
+    fetchDataFromServer(item.name)
+  }
+  else {
+  }
+
+}
 const handDelete = (row) => {
   const index = tableData.value.findIndex(item => item.name === row.name); // 假设每行数据都有一个唯一的 'name' 属性
   if (index !== -1) {
@@ -358,9 +414,30 @@ async function fetchData() {
   try {
     // 模拟数据加载过程
     await new Promise(resolve => setTimeout(resolve, 500));
+    fileRouter.value= []
+    fileRouter.value.push('/root');
+    // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
+    const response = await axios.get('http://localhost:8080/files/root');
+    tableData.value = response.data;
+    // 数据加载成功，显示消息并设置 isLoading 为 false
+    ElMessage.success('数据加载成功');
+    isLoading.value = false;
+  } catch (error) {
+    // 数据加载失败，显示错误消息并设置 isLoading 为 false
+    ElMessage.error('数据加载失败');
+    console.error(error);
+    isLoading.value = false;
+  }
+}
+
+async function fetchDataFromServer(parentPath) {
+  try {
+    // 模拟数据加载过程
+    await new Promise(resolve => setTimeout(resolve, 500));
+    fileRouter.value.push(parentPath)
 
     // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
-    const response = await axios.get('http://127.0.0.1:8080/files');
+    const response = await axios.get('http://localhost:8080/files/'+parentPath);
     tableData.value = response.data;
     // 数据加载成功，显示消息并设置 isLoading 为 false
     ElMessage.success('数据加载成功');
@@ -401,6 +478,12 @@ fetchData();
   color: var(--el-color-primary);
   display: flex;
   align-items: center;
+}
+
+.last-breadcrumb-item {
+  font-family: bold,sans-serif;
+  font-size: 14px;
+
 }
 
 </style>
