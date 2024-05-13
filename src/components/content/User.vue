@@ -53,22 +53,23 @@ async function fetchData() {
         .then(response => {
           // 检查HTTP状态码
           if (response.status === 200) {
-            // 登录成功
-            console.log('数据加载成功');
-            ElMessage.success('数据加载成功');
-            // 数据加载成功，显示消息并设置 isLoading 为 false
-            isLoading.value = false;
-            Data.value.name = response.data.name
-            Data.value.role = response.data.role
-            Data.value.capacity = response.data.capacity
-            Data.value.spaceSize = response.data.spaceSize
-            Data.value.phone = response.data.phone
-            Data.value.nickname = response.data.nickname
-            Data.value.eMail = response.data.email
-            Data.value.status  = response.data.status
-            Data.value.signature = response.data.signature
-            Data.value.curren_capability = response.data.curren_capability
-
+            setTimeout(() => {
+              // 登录成功
+              console.log('数据加载成功');
+              ElMessage.success('数据加载成功');
+              // 数据加载成功，显示消息并设置 isLoading 为 false
+              isLoading.value = false;
+              Data.value.name = response.data.name
+              Data.value.role = response.data.role
+              Data.value.capacity = response.data.capacity
+              Data.value.spaceSize = response.data.spaceSize
+              Data.value.phone = response.data.phone
+              Data.value.nickname = response.data.nickname
+              Data.value.eMail = response.data.email
+              Data.value.status  = response.data.status
+              Data.value.signature = response.data.signature
+              Data.value.curren_capability = response.data.curren_capability
+            },1000)
           } else {
             // 其他未知错误
             console.log('发生未知错误，请重试');
@@ -115,7 +116,7 @@ fetchData();
           </el-col>
           <el-col :span="2">
             <el-row>
-              <span  v-text="Data.name" style="text-align: center;vertical-align: center;line-height: 2;font-size: 18px;" ></span>
+              <span  v-text="Data.nickname" style="text-align: center;vertical-align: center;line-height: 2;font-size: 18px;" ></span>
             </el-row>
             <el-row>
               <el-tag   type="danger" style="text-align: center;vertical-align: center;line-height: 4;font-size: 18px;" >

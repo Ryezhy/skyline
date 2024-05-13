@@ -23,7 +23,7 @@
               <el-menu-item index="1-1" >单文件上传</el-menu-item>
               <el-menu-item index="1-2" >批量上传</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="2"  @click="drawer = true" >传输列表</el-menu-item>
+          <el-menu-item index="2"  @click="transferDrawer = true" >传输列表</el-menu-item>
           <el-menu-item index="3" >回收站</el-menu-item>
 
         </el-menu>
@@ -158,21 +158,36 @@
           <el-col :span="20"><div class="grid-content ep-bg-purple-dark" />
                 <RouterView></RouterView>
           </el-col>
-        </el-row>
 
+        </el-row>
+        <el-row style="margin-top: 6px">
+            <el-col :span="4" :offset="20">
+              <el-button @click="notiyDrawer=true" >消息中心</el-button>
+            </el-col>
+        </el-row>
+        <!--消息列表!-->
+        <el-drawer
+            v-model="notiyDrawer"
+            title="I am the title"
+        >
+        </el-drawer>
       </el-main>
 
       <!--传输列表!-->
       <el-drawer
-          v-model="drawer"
+          v-model="transferDrawer"
           title="传输列表"
-          :direction="direction"
           :before-close="handleClose1"
       >
-        <span>请上传你的文件</span>
+        <div>
+            <p>下载进度: {{ progress }}%</p>
+            <el-progress :percentage="progress"></el-progress>
+        </div>
+
       </el-drawer>
 
-      <el-drawer v-model="drawer2" :direction="direction">
+      <el-drawer v-model="drawer2
+">
         <template #header>
           <h4>set title by slot</h4>
         </template>
@@ -195,6 +210,8 @@
       </el-drawer>
 
     </el-container>
+
+
   </div>
 </template>
 <style scoped>
@@ -209,7 +226,13 @@
 </style>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+
+import {Store, useStore} from 'vuex';
+
+const store = useStore();
+
+
+import {ref, watch} from 'vue'
 import {
   Document,
   Menu as IconMenu,
@@ -245,11 +268,14 @@ const handleClose = (key: string, keyPath: string[]) => {
 
 import { ElMessageBox } from 'element-plus'
 import {useRouter} from "vue-router";
+import axios from "axios";
 
-const drawer = ref(false)
+const transferDrawer = ref(false)
 const drawer2 = ref(false)
+const notiyDrawer = ref(false)
 const direction = ref('rtl')
 const radio1 = ref('Option 1')
+
 const router = useRouter()
 const handleClose1 = (done: () => void) => {
         done()
@@ -277,6 +303,13 @@ function getCssVarName(type: any) {
   return `--el-box-shadow${type ? '-' : ''}${type}`
 
 }
+
+
+const parentId = store.state.parentId
+const progress = ref(0);
+watch(() => store.state.parentId, (newValue) => {
+  progress.value = newValue;
+});
 </script>
 
 <style>
@@ -285,7 +318,7 @@ function getCssVarName(type: any) {
   min-width: 100%;
   max-width: 100%;
   height: 100%;
-  min-height: 600px;
+  min-height: 700px;
   max-height: 1200px;
   background-color: white;
 }
@@ -295,7 +328,7 @@ function getCssVarName(type: any) {
 }
 .el-menu-vertical-demo:not(.el-menu--collapse) {
   width: 180px;
-  min-height: 700px;
+  min-height: 670px;
 }
 .flex-grow {
   flex-grow: 1;

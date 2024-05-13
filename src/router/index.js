@@ -4,7 +4,9 @@ const routes = [
     {
         path: '/login' || '/', // 注意这里的逻辑或操作符可能不是你想要的，通常应该是 path: '/login' 或 path: '/'
         name: 'Login',
-        meta: { hideNavigation: false },
+        meta: { hideNavigation: false,
+
+        },
         component: () => import(/* webpackChunkName: "login" */ '@/components/Login.vue')
     },
     {
@@ -22,37 +24,48 @@ const routes = [
             {
                 path: 'home', // 子路由的路径
                 name: 'indexHome',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true ,
+                        message: []
+                },
                 component: () => import(/* webpackChunkName: "home" */ '@/components/content/Home.vue')
             },
             {
                 path:'file',
                 name: 'indexFile',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true,message: []
+                },
                 component: () => import(/* webpackChunkName: "file" */ '@/components/content/File.vue')
             },
             {
                 path: 'application',
                 name: 'indexApplication',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true,
+                    message: []
+                },
                 component: () => import(/* webpackChunkName: "application" */ '@/components/content/Application.vue')
             },
             {
                 path: 'setting',
                 name: 'indexSetting',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true,
+                    message: []
+                },
                 component: () => import(/* webpackChunkName: "setting" */ '@/components/content/Setting.vue')
             },
             {
                 path: 'user',
                 name: 'indexUser',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true,
+                    message: []
+                },
                 component: () => import(/* webpackChunkName: "user" */ '@/components/content/User.vue')
             },
             {
                 path: 'about',
                 name: 'indexAbout',
-                meta: { hideNavigation: true },
+                meta: { hideNavigation: true ,
+                    message: []
+                },
                 component: () => import(/* webpackChunkName: "about" */ '@/components/content/About.vue')
             },
             // 其他子路由...

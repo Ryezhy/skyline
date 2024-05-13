@@ -42,7 +42,7 @@
                     <el-checkbox  v-model="rememberMe" label="记住密码并自动登录(不建议)" size="small" style="margin-left: 10px"/>
                     <el-text class="mx-1"  type="primary" style="margin-left: 10px">新用户？</el-text>
                     <el-button  text  type="danger" @click="$router.push('/register')" >点击注册</el-button>
-                    <el-button type="primary" @click="submitForm()" :style="{
+                    <el-button      v-loading.fullscreen.lock="isLoading"  type="primary" @click="submitForm()" :style="{
     boxShadow: `var(${getCssVarName('light')})`}" style="margin-left: 10px">登录</el-button>
 
                     <el-button @click="resetForm" :style="{
@@ -68,6 +68,9 @@ import {useRouter} from 'vue-router';
 import axios from "axios";
 
 const router = useRouter();
+
+//登录动画
+const isLoading = ref(false);
 
 // 定义表单数据
 const ruleForm = reactive({
@@ -117,11 +120,14 @@ const submitForm = async () => {
             username: ruleForm.username,
             password: ruleForm.password
           };
+          isLoading.value = true;
           axios.post('http://localhost:8080/login', user)
               .then(response => {
+                isLoading.value = false;
                 // 检查HTTP状态码
                 if (response.status === 200) {
                   // 登录成功
+
                   console.log('登录成功');
                   notify("登录成功");
                   router.push('/index/home');
@@ -132,19 +138,31 @@ const submitForm = async () => {
                 }
               })
               .catch(error => {
-                if(error.response.status===401){
-                  // 登录失败，账户或密码错误
-                  notify("登录失败，账户或密码错误");
-                  console.log('登录失败，账户或密码错误');
+                isLoading.value = false;
+                if (error.response) {
+                  // 请求已发出，服务器也响应了状态码，但不是2xx
+                  if(error.response.status === 401){
+                    // 登录失败，账户或密码错误
+                    notify("登录失败，账户或密码错误");
+                    console.log('登录失败，账户或密码错误');
+                  } else {
+                    // 其他状态码错误，比如404, 500等
+                    notify("服务器返回错误状态码：" + error.response.status);
+                    console.log('服务器返回错误状态码：', error.response.status);
+                  }
+                } else if (error.request) {
+                  // 请求已发出，但没有收到任何响应
+                  // 这通常是因为请求超时或网络问题
+                  notify("服务器响应超时或网络错误");
+                  console.log('请求已发出，但没有收到响应', error.request);
+                } else {
+                  // 在设置请求时触发了一个错误
+                  // 比如请求的配置不正确（比如无效的URL）
+                  notify("请求配置错误");
+                  console.log('请求配置错误', error.message);
                 }
-                else{
-                  // 如果请求失败，处理错误
-                  // 这里通常处理网络错误、超时等异常情况
-                  notify("登录失败，请求出错");
-                  console.log('登录失败，请求出错', error);
-                }
-
               });
+
         } else {
           // 表单验证失败，提示用户
           notify("格式错误")
@@ -228,7 +246,6 @@ onMounted(()=>{
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   background-color: rgba(255, 255, 255, 0.3);
-
 }
 
 .login-ruleForm{
@@ -247,8 +264,6 @@ onMounted(()=>{
   text-align: center;
   line-height: 3;
   border-radius: 3px;
-
-
 }
 :deep(.el-form-item label) {
   color: white;
