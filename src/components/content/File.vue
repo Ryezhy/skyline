@@ -110,8 +110,26 @@
                       content="下载"
                       placement="bottom"
                   >
-                    <el-button  size="small" style="margin-left: 6px"  @click="handleDownload(scope.row)">
+                    <el-button  size="small" style="margin-left: 6px"  @click="handleDownload(scope.row, 0,scope.row.file_size,0)">
                       <el-icon><Download /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      content="暂停"
+                      placement="bottom"
+                  >
+                    <el-button @click="resumeDownload(scope.row)" size="small">继续
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      content="暂停"
+                      placement="bottom"
+                  >
+                    <el-button @click="cancelDownload" size="small">取消
                     </el-button>
                   </el-tooltip>
                 </template>
@@ -138,8 +156,18 @@
         <span>
           <progress max="100" :value="downloadProgress"/>
           {{ downloadProgress }}%
-          <el-button @click="resumeDownload">继续</el-button>
-          <el-button @click="pauseDownload">暂停</el-button>
+          <el-select v-model="select"  placeholder="请选择">
+                <el-option
+                    v-for="i in options"
+                    :key="i.value"
+                    :label="i.label"
+                    :value="i.value">
+              </el-option>
+          </el-select>
+          <el-button @click="chuck1">查看分片1大小</el-button>
+          <el-button @click="chuck2">查看分片2大小</el-button>
+          <el-button @click="hebin">合并</el-button>
+
         </span>
 
       </el-main>
@@ -155,23 +183,37 @@
 
 
 <script setup lang="ts">
-import {computed, ref, watch} from "vue";
+import {computed, ref} from "vue";
 import {ElMessage, ElTable} from 'element-plus'
-import axios from "axios";
-import { ElNotification as notify } from "element-plus/es/components/notification/index";
-import  { CancelTokenSource, CancelToken } from 'axios';
+import axios, {Canceler,AxiosResponse} from "axios";
+import {ElNotification as notify} from "element-plus/es/components/notification/index";
 import ShareDialog from "@/components/content/Files/ShareDialog.vue";
 import {
-  ArrowDown, ArrowRight,
-  Delete, DeleteFilled,
-  Document, DocumentCopy, Download,
-  Edit, Folder, FolderOpened, Headset, List, Picture,
-  QuestionFilled, Scissor,
-  Search,
+  Delete,
+  DeleteFilled,
+  Document,
+  DocumentCopy,
+  Download,
+  Edit,
+  Folder,
+  FolderOpened,
+  Headset,
+  List,
+  Picture,
+  QuestionFilled,
+  Scissor,
   Share,
-  Upload,
-  VideoCamera, Wallet
+  VideoCamera,
+  Wallet
 } from '@element-plus/icons-vue'
+import {useStore} from 'vuex';
+let index = 0;
+let select = ref(0)
+let options = ref([ // 定义选项列表
+  { value: 0, label: '0' },
+  { value: 1, label: '1' },
+  { value: 2, label: '2' }
+])
 //资源定义
 interface File {
   file_UUid: string;
@@ -433,8 +475,7 @@ const downLoading = ref(false);
 //下载
 const process = ref(0);
 
-const downloading = ref(false); // 是否正在下载
-const downloadProgress = ref(0); // 下载进度
+const downloadProgress = ref("00.00"); // 下载进度
 const speed  = ref("0 Mb/s");
 let isPaused = ref(<boolean>false)
 let fileTemp = ref (<File>{
@@ -446,105 +487,217 @@ let fileTemp = ref (<File>{
   file_size: ''
 })
 
-let downloadedBlob = ref(<Blob>{})
+const downloading = ref(false);
+const paused = ref(false);
+let downloadRequest: { cancel: Canceler } | null = null;
+
+let fileBlog = new Blob()
+let fileBlog1 = new Blob()
+let fileBlog2 = new Blob()
 
 
-const handleDownload = async (file: File) => {
-  let user = {
-    username: localStorage.getItem('username'),
-    password: localStorage.getItem('password')
-  };
-  isLoading.value = false;
-  fileTemp.value = file;
-  let startTime = new Date().getTime(); // 记录开始时间
-  let prevLoaded = 0; // 记录上一次的已下载字节数
-  let startTime1 = startTime
-  let cancelTokenSource: CancelTokenSource; // 用于取消请求的对象
-  cancelTokenSource = axios.CancelToken.source();
-  //速度数组
-  const speedArray: number[] = [];
-  //记录次数
-  let count = 0;
-  let progress = 0;
+//构建一个全局的axios实例
+const CancelToken = axios.CancelToken;
+const source = CancelToken.source(); // 创建一个取消令牌源
+let response: AxiosResponse<Blob>
+const chuck1 = () => {
+  notify(Number(fileBlog.size)+"")
+};
+const chuck2 = () => {
+  notify(Number(fileBlog1.size)+"")
+};
+const chuck3 = () => {
+  notify(Number(fileBlog2.size)+"")
+}
+const hebin = () => {
+  fileBlog2 = new Blob([fileBlog,fileBlog1])
+  notify(Number(fileBlog2.size)+"")
+  const url = URL.createObjectURL(fileBlog2);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `副本.txt`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  console.log(fileBlog2.size)
+
+}
+let controller: AbortController; // 用于控制请求取消
+
+const handleDownload = async (row:File,start:number,length:number,state:number) => {
+  // 如果存在一个旧的控制器，则先中止它
+  if (controller) {
+    controller.abort();
+  }
+
+  // 创建一个新的控制器
+  controller = new AbortController();
+  const signal = controller.signal;
+  const chunks = [];
+
   try {
-    const response = await axios.post('http://localhost:8080/download', { user, file }, {
-      responseType: 'blob',
-      cancelToken: cancelTokenSource.token, // 设置取消请求的token
-      onDownloadProgress: (progressEvent) => {
-        if (isPaused.value) {
-          // 如果被暂停，取消请求
-          cancelTokenSource.cancel('Download paused');
-          // 将下载的数据追加到已下载的 Blob 对象中
-          const chunk = new Blob([progressEvent.currentTarget.response], { type: 'application/octet-stream' });
-          if (!downloadedBlob) {
-            downloadedBlob = chunk;
-          } else {
-            downloadedBlob = new Blob([downloadedBlob, chunk], { type: 'application/octet-stream' });
-          }
-          return;
+    // 进行身份验证
+
+      // 验证成功后，构建请求数据
+      const requestData = {
+        user: {
+          username: localStorage.getItem('username'),
+          password: localStorage.getItem('password')
+        },
+        file: {
+          file_UUid: row.file_UUid,
+          file_name: row.file_name,
+          file_type: row.file_type,
+          upload_time: row.upload_time,
+          file_path: row.file_path,
+          file_size: row.file_size
+        },
+        fileInfo: {
+          file_UUid: row.file_UUid,
+          start: start, // 开始字节
+          length: length, // 结束长度字节
+          state: state
         }
-        // 计算下载进度
-        const loaded = progressEvent.loaded;
-        const total = parseInt(file.file_size as string);
-        progress = Math.round((loaded / total) * 100);
-        store.commit('setParentId', progress);
-        // 计算下载速度
-        const downloadedBytes = loaded - prevLoaded;
-        prevLoaded = loaded; // 更新已下载字节数
-        const currentTime = new Date().getTime();
-        const elapsedTime = (currentTime - startTime1) ; // 经过的时间（秒）
-        startTime1 = currentTime;
-        const downloadSpeed1 = downloadedBytes/((elapsedTime*1024)+1200)
-        if (count===10){ //计数器
-          count = 0;
-          let downloadSpeed = 0
-          for(let i = 0; i < speedArray.length; i++){
-            downloadSpeed += speedArray[i]
-          }
-          downloadSpeed = downloadSpeed/speedArray.length
-          speed.value = downloadSpeed.toFixed(3)+' MB/s'
-          // 计算下载速度（MB/s）
-          downloadProgress.value = progress;
-          store.commit('setParentId', progress);
-          console.log(store.state.parentId)
-          //console.log(`下载进度: ${progress}%，下载速度: ${downloadSpeed.toFixed(3)} MB/s`);
-        }
-        else {
-          speedArray[count] = downloadSpeed1
-          count++;
-        }
+      };
+
+      // 发起POST请求并处理响应
+      const response: Response = await fetch('http://localhost:8080/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData),
+        signal // 绑定信号
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
+      const reader = response.body.getReader();
+      let receivedLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        receivedLength += value.length;
+      }
+      const blob = new Blob(chunks);
+      // 创建URL并触发下载
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${row.file_name}.${row.file_type}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl); // 释放URL对象
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      // 处理保存已经下载的部分 Blob
+      const blob = new Blob(chunks);
+      notify('下载取消，保存已下载部分,一共'+Number(blob.size)+"b")
+      console.log('下载取消，保存已下载部分,一共'+blob.size+"b");
+
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${row.file_name}.${row.file_type}.partial`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl); // 释放URL对象
+    } else {
+      // 错误处理
+      console.error('下载文件时出错:', error);
+    }
+  }
+};
+
+const cancelDownload = () => {
+  if (controller) {
+    controller.abort();
+  }
+};
+const resumeDownload = (row:File) => {
+
+};
+let start = 0
+let length = 0
+const downloadFile = async (row: File) => {
+  try {
+    const requestData = {
+      user: {
+        username: localStorage.getItem('username'),
+        password: localStorage.getItem('password')
+      },
+      file: {
+        file_UUid: row.file_UUid,
+        file_name: row.file_name,
+        file_type: row.file_type,
+        upload_time: row.upload_time,
+        file_path: row.file_path,
+        file_size: row.file_size
+      },
+      fileInfo: {
+        file_UUid: row.file_UUid,
+        start:  0,//开始字节
+        length: Number(row.file_size),//结束长度字节
+        state: 0
+      }
+    };
+
+    // 发起POST请求并处理响应
+    response = await axios.post('http://localhost:8080/download', requestData, {
+      responseType: 'blob',
+      cancelToken: source.token, // 使用取消令牌
     });
-    // 创建链接并模拟点击下载
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    // 创建URL并触发下载
+    const url = URL.createObjectURL(new Blob([response.data]));
+    console.log(row.file_size+"")
+    saveBinary(response.data,Number(select.value))
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', file.file_name+'.'+file.file_type);
+    link.download = `${row.file_name}.${row.file_type}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    isLoading.value = false;
 
-    // 计算下载所花费的时间
-    const endTime = new Date().getTime();
-    const downloadTime = (endTime - startTime) / 1000; // 经过的时间（秒）
-    downloadProgress.value = progress;
-    console.log(`下载完成，总共花费时间: ${downloadTime.toFixed(2)} 秒`);
-  } catch (error) {
-    console.error('Error downloading file:', error);
-    isLoading.value = false;
+  } catch (error: any) {
+    if (axios.isCancel(error)) {
+      console.log('下载消息:', error.message); // 如果请求被取消，这里会捕获到取消消息
+    }
+    else {
+      // 错误处理
+      console.error('下载文件时出错:', error);
+      // 这里可以根据需要抛出错误或执行其他错误处理逻辑
+    }
   }
-}
-// 暂停下载函数
-const pauseDownload = () => {
-  isPaused.value = true;
-}
+};
 
-// 继续下载函数
-const resumeDownload = () => {
-  isPaused.value = false;
-  // 重新调用 handleDownload 函数继续下载
-  handleDownload(fileTemp.value); // 你需要传入文件对象
+const handlePause = () => {
+  isPaused.value = true;
+  source.cancel('下载已取消');
+  notify(`暂停下载,已读取${fileBlog.size}`)
+};
+//保存二进制
+const saveBinary = (data: Blob,index:number) => {
+  if (index===0){
+    fileBlog = data
+    notify("保存fileBlog成功"+fileBlog.size)
+    console.log(fileBlog.size)
+  }else if(index==1){
+    fileBlog1 =  data
+    notify("保存fileBlog1成功"+fileBlog1.size)
+    console.log(fileBlog1.size)
+  }else {
+    notify("下载"+data.size+"b")
+    console.log("下载",data.size+"b")
+  }
+};
+//合并二进制
+const mergeBinary = (data1:Blob,data2:Blob) => {
+  return new Blob([data1, data2]);
 }
 
 
@@ -650,15 +803,11 @@ async function fetchDataFromServer(fileItem:File) { //获取子目录
 }
 
 
-
-
-import { useStore } from 'vuex';
-import {l} from "vite/dist/node/types.d-aGj9QkWt";
-
 const store = useStore();
 store.commit('setParentId', 0);
 // 在组件加载时开始加载数据
 fetchData();
+
 </script>
 
 
