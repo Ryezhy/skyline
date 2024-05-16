@@ -378,24 +378,38 @@ if (controller) {
 let state = 0
 const handleDownload = (content) => {
   const row = content.file
-  state = content.state
-  start = content.start
-  startDownLoad(row, state)
+
+  if (!checkUUIDISExits(row.file_UUid)){
+    notify("该文件FUID不存在，给予下载")
+    state = content.state
+    start = content.start
+    startDownLoad(row, state)
+    FUUIUDs.push(row.file_UUid)
+  }
+  else {
+    notify("该文件已在下载，切勿重新下载")
+  }
 };
+//检查下载的FUUID是否存在
+const checkUUIDISExits = (fUuid:String) => {
+  for (var i in FUUIUDs){
+    if (fUuid==i){
+      return true;
+    }
+  }
+  return false;
 
+}
 let progress = 0;
-
+//FUUID数组
+let FUUIUDs = []
 const startDownLoad = async (row: File, state: number) => {
-  notify("开始下载")
 // 创建一个新的控制器
   controller = new AbortController();
   const signal = controller.signal;
   let chunks: BlobPart[] = [];
 
   try {
-    // 进行身份验证
-    notify(`一共:${((new Blob(chunks)).size / (1024 * 1024)).toFixed(2)}Mb`)
-    // 验证成功后，构建请求数据
     const requestData = {
       user: {
         username: localStorage.getItem('username'),
@@ -445,7 +459,6 @@ const startDownLoad = async (row: File, state: number) => {
     } else {
       blob = new Blob(chunks);
     }
-    notify(`一共:${(blob.size / (1024 * 1024)).toFixed(2)}Mb`)
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
@@ -456,6 +469,7 @@ const startDownLoad = async (row: File, state: number) => {
     chunks = [];
     chunks.length = 0;
     start = 0
+    notify(`下载，成功一共:${(blob.size / (1024 * 1024)).toFixed(2)}Mb`)
   } catch (error: any) {
     if (error.name === 'AbortError') {
       // 处理保存已经下载的部分 Blob
