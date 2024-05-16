@@ -379,21 +379,20 @@ let state = 0
 const handleDownload = (content) => {
   const row = content.file
 
-  if (!checkUUIDISExits(row.file_UUid)){
+  if (!checkUUIDISExits(row.file_UUid)) {
     notify("该文件FUID不存在，给予下载")
     state = content.state
     start = content.start
     startDownLoad(row, state)
     FUUIUDs.push(row.file_UUid)
-  }
-  else {
+  } else {
     notify("该文件已在下载，切勿重新下载")
   }
 };
 //检查下载的FUUID是否存在
-const checkUUIDISExits = (fUuid:String) => {
-  for (let i in FUUIUDs){
-    if (fUuid==i){
+const checkUUIDISExits = (fUuid: String) => {
+  for (let i in FUUIUDs) {
+    if (fUuid == i) {
       return true;
     }
   }
