@@ -392,7 +392,7 @@ const handleDownload = (content) => {
 };
 //检查下载的FUUID是否存在
 const checkUUIDISExits = (fUuid:String) => {
-  for (var i in FUUIUDs){
+  for (let i in FUUIUDs){
     if (fUuid==i){
       return true;
     }
