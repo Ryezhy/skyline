@@ -14,4 +14,5 @@ app.use(ElementPlus, {
 })
 app.use(ElementPlus);
 app.use(store)
+//全局属性
 app.mount('#app')

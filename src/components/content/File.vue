@@ -110,26 +110,8 @@
                       content="下载"
                       placement="bottom"
                   >
-                    <el-button  size="small" style="margin-left: 6px"  @click="handleDownload(scope.row, 0,scope.row.file_size,0)">
+                    <el-button  size="small" style="margin-left: 6px"  @click="handleDownload(scope.row, 0)">
                       <el-icon><Download /></el-icon>
-                    </el-button>
-                  </el-tooltip>
-                  <el-tooltip
-                      class="box-item"
-                      effect="dark"
-                      content="暂停"
-                      placement="bottom"
-                  >
-                    <el-button @click="resumeDownload(scope.row)" size="small">继续
-                    </el-button>
-                  </el-tooltip>
-                  <el-tooltip
-                      class="box-item"
-                      effect="dark"
-                      content="暂停"
-                      placement="bottom"
-                  >
-                    <el-button @click="cancelDownload" size="small">取消
                     </el-button>
                   </el-tooltip>
                 </template>
@@ -147,28 +129,11 @@
               style="margin-top: 8px"
           />
         <div style="margin-top: 20px">
-          <el-button @click="toggleSelection([tableData[0], tableData[1]])"
-          >选择1和2</el-button
+          <el-button @click="toggleSelection(tableData)"
+          >全部选择</el-button
           >
           <el-button @click="toggleSelection()">全部取消</el-button>
         </div>
-        <p>下载速度: {{ speed}}</p>
-        <span>
-          <progress max="100" :value="downloadProgress"/>
-          {{ downloadProgress }}%
-          <el-select v-model="select"  placeholder="请选择">
-                <el-option
-                    v-for="i in options"
-                    :key="i.value"
-                    :label="i.label"
-                    :value="i.value">
-              </el-option>
-          </el-select>
-          <el-button @click="chuck1">查看分片1大小</el-button>
-          <el-button @click="chuck2">查看分片2大小</el-button>
-          <el-button @click="hebin">合并</el-button>
-
-        </span>
 
       </el-main>
     </el-container>
@@ -351,7 +316,7 @@ const toggleSelection = (rows?: File[]) => {  // 选中行
   if (rows) {
     rows.forEach((row) => {
       // TODO: improvement typing when refactor table
-      multipleTableRef.value!.toggleRowSelection(row, undefined)
+      multipleTableRef.value!.toggleRowSelection(row, Boolean)
     })
   } else {
     multipleTableRef.value!.clearSelection()
@@ -443,19 +408,19 @@ const handleRouterBack = () => {  //路径后退事件
     }
   }
 
-  const handCopy = (row) => {
+  const handCopy = (row:File) => {
     notify('复制成功')
   }
 
-  const handUpload = (row) => {
+  const handUpload = (row:File) => {
       notify('上传成功')
   }
 
-  const handStickup = (row) => {
+  const handStickup = (row:File) => {
     notify('粘贴成功')
   }
 
-  const handCut = (row) => {
+  const handCut = (row:File) => {
     notify('剪切成功')
   }
 //分享的文件信息
@@ -471,235 +436,23 @@ const handleShare = (name: string, type: string) => {
   }
   showDialog.value = showDialog.value === false;
 }
-const downLoading = ref(false);
-//下载
-const process = ref(0);
 
-const downloadProgress = ref("00.00"); // 下载进度
-const speed  = ref("0 Mb/s");
-let isPaused = ref(<boolean>false)
-let fileTemp = ref (<File>{
-  file_UUid: '',
-  file_name: '',
-  file_type: '',
-  upload_time: '',
-  file_path: '',
-  file_size: ''
-})
-
-const downloading = ref(false);
-const paused = ref(false);
-let downloadRequest: { cancel: Canceler } | null = null;
-
-let fileBlog = new Blob()
-let fileBlog1 = new Blob()
-let fileBlog2 = new Blob()
-
-
-//构建一个全局的axios实例
-const CancelToken = axios.CancelToken;
-const source = CancelToken.source(); // 创建一个取消令牌源
-let response: AxiosResponse<Blob>
-const chuck1 = () => {
-  notify(Number(fileBlog.size)+"")
-};
-const chuck2 = () => {
-  notify(Number(fileBlog1.size)+"")
-};
-const chuck3 = () => {
-  notify(Number(fileBlog2.size)+"")
+let param = {
+  file: null as File | null,
+  start:0,
+  length:0,
+  state:0,
 }
-const hebin = () => {
-  fileBlog2 = new Blob([fileBlog,fileBlog1])
-  notify(Number(fileBlog2.size)+"")
-  const url = URL.createObjectURL(fileBlog2);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `副本.txt`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  console.log(fileBlog2.size)
-
+import { defineEmits } from 'vue'
+// 使用defineEmits创建名称，接受一个数组
+const emit = defineEmits(['clickDownload'])
+const handleDownload = async (row:File,state:number) => {
+  //传递param到父组件
+  param.file = row
+  param.length = Number(row.file_size)
+  param.state = state
+  emit('clickDownload', param)
 }
-let controller: AbortController; // 用于控制请求取消
-
-const handleDownload = async (row:File,start:number,length:number,state:number) => {
-  // 如果存在一个旧的控制器，则先中止它
-  if (controller) {
-    controller.abort();
-  }
-
-  // 创建一个新的控制器
-  controller = new AbortController();
-  const signal = controller.signal;
-  const chunks = [];
-
-  try {
-    // 进行身份验证
-
-      // 验证成功后，构建请求数据
-      const requestData = {
-        user: {
-          username: localStorage.getItem('username'),
-          password: localStorage.getItem('password')
-        },
-        file: {
-          file_UUid: row.file_UUid,
-          file_name: row.file_name,
-          file_type: row.file_type,
-          upload_time: row.upload_time,
-          file_path: row.file_path,
-          file_size: row.file_size
-        },
-        fileInfo: {
-          file_UUid: row.file_UUid,
-          start: start, // 开始字节
-          length: length, // 结束长度字节
-          state: state
-        }
-      };
-
-      // 发起POST请求并处理响应
-      const response: Response = await fetch('http://localhost:8080/download', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData),
-        signal // 绑定信号
-      });
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const reader = response.body.getReader();
-      let receivedLength = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        receivedLength += value.length;
-      }
-      const blob = new Blob(chunks);
-      // 创建URL并触发下载
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${row.file_name}.${row.file_type}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl); // 释放URL对象
-
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      // 处理保存已经下载的部分 Blob
-      const blob = new Blob(chunks);
-      notify('下载取消，保存已下载部分,一共'+Number(blob.size)+"b")
-      console.log('下载取消，保存已下载部分,一共'+blob.size+"b");
-
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${row.file_name}.${row.file_type}.partial`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl); // 释放URL对象
-    } else {
-      // 错误处理
-      console.error('下载文件时出错:', error);
-    }
-  }
-};
-
-const cancelDownload = () => {
-  if (controller) {
-    controller.abort();
-  }
-};
-const resumeDownload = (row:File) => {
-
-};
-let start = 0
-let length = 0
-const downloadFile = async (row: File) => {
-  try {
-    const requestData = {
-      user: {
-        username: localStorage.getItem('username'),
-        password: localStorage.getItem('password')
-      },
-      file: {
-        file_UUid: row.file_UUid,
-        file_name: row.file_name,
-        file_type: row.file_type,
-        upload_time: row.upload_time,
-        file_path: row.file_path,
-        file_size: row.file_size
-      },
-      fileInfo: {
-        file_UUid: row.file_UUid,
-        start:  0,//开始字节
-        length: Number(row.file_size),//结束长度字节
-        state: 0
-      }
-    };
-
-    // 发起POST请求并处理响应
-    response = await axios.post('http://localhost:8080/download', requestData, {
-      responseType: 'blob',
-      cancelToken: source.token, // 使用取消令牌
-    });
-
-    // 创建URL并触发下载
-    const url = URL.createObjectURL(new Blob([response.data]));
-    console.log(row.file_size+"")
-    saveBinary(response.data,Number(select.value))
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${row.file_name}.${row.file_type}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-  } catch (error: any) {
-    if (axios.isCancel(error)) {
-      console.log('下载消息:', error.message); // 如果请求被取消，这里会捕获到取消消息
-    }
-    else {
-      // 错误处理
-      console.error('下载文件时出错:', error);
-      // 这里可以根据需要抛出错误或执行其他错误处理逻辑
-    }
-  }
-};
-
-const handlePause = () => {
-  isPaused.value = true;
-  source.cancel('下载已取消');
-  notify(`暂停下载,已读取${fileBlog.size}`)
-};
-//保存二进制
-const saveBinary = (data: Blob,index:number) => {
-  if (index===0){
-    fileBlog = data
-    notify("保存fileBlog成功"+fileBlog.size)
-    console.log(fileBlog.size)
-  }else if(index==1){
-    fileBlog1 =  data
-    notify("保存fileBlog1成功"+fileBlog1.size)
-    console.log(fileBlog1.size)
-  }else {
-    notify("下载"+data.size+"b")
-    console.log("下载",data.size+"b")
-  }
-};
-//合并二进制
-const mergeBinary = (data1:Blob,data2:Blob) => {
-  return new Blob([data1, data2]);
-}
-
 
 const formattedBreadcrumbItems = computed(() => {// 计算属性来格式化路径数组
   const items = [...fileRouter.value]; // 创建数组的一个副本
