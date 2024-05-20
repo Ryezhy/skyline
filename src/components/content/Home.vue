@@ -15,8 +15,10 @@ function getCssVarName(type) {
   border-radius: 6px;
   margin-top: 0;
   padding: 5px;
-  background-color: #FFFFFF;
   min-height: 600px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.3);
 }
 .head{
   height: 4vh;
@@ -25,6 +27,7 @@ function getCssVarName(type) {
   padding: 5px;
   color: white;
   background-color: #409EFF;
+
 }
 
 

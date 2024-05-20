@@ -1,10 +1,10 @@
 <template>
   <div class="common-layout">
-    <el-container>
+    <el-container style="width:100%;height:100%;padding:0;margin: 0">
       <el-header class="head">Header</el-header>
-      <el-container>
-        <el-aside class="aside" width="200px">Aside</el-aside>
-        <el-main class="content">
+      <el-container style="width:100%;height:100%;padding:0;margin: 0">
+        <el-aside class="aside">Aside</el-aside>
+        <el-main class="main-content">
           <el-container :style="{
     boxShadow: `var(${getCssVarName('light')})`}" class="content-form">
             <el-header :style="{
@@ -12,16 +12,6 @@
               登录
             </el-header>
             <el-main>
-              <el-form
-                  ref="ruleFormRef"
-                  :model="ruleForm"
-                  :rules="rules"
-                  class="demo-ruleForm"
-                  label-width="auto"
-                  status-icon
-                  style="max-width: 600px"
-              >
-
                 <el-form
                     ref="formRef"
                     :model="ruleForm"
@@ -29,33 +19,31 @@
                     class="login-ruleForm"
                     label-width="auto"
                     status-icon
-                    style="max-width: 600px">
-                  <el-form-item class="items" label="账户" prop="username">
+                    style="">
+                  <el-form-item class="items" label="账户" prop="username" size="large" >
                     <el-input v-model="ruleForm.username" :rules="rules.username" :style="{
     boxShadow: `var(${getCssVarName('light')})`}" autocomplete="off"
-                              placeholder="3~8位英文或者数字" type="text"></el-input>
+                              placeholder="3~8位英文或者数字" type="text" size="large" ></el-input>
                   </el-form-item>
-                  <el-form-item label="密码" prop="password" style="color: white">
+                  <el-form-item label="密码" prop="password" style="color: white" size="large" >
                     <el-input v-model="ruleForm.password" :rules="rules.password" :style="{
     boxShadow: `var(${getCssVarName('light')})`}" autocomplete="off"
-                              placeholder="5~8位英文或者数字" type="password"></el-input>
+                              placeholder="5~8位英文或者数字" type="password" size="large" ></el-input>
                   </el-form-item>
                   <el-form-item>
-                    <el-checkbox v-model="rememberMe" label="记住密码并自动登录(不建议)" size="small"
+                    <el-checkbox v-model="rememberMe" label="记住密码并自动登录(不建议)" size="large"
                                  style="margin-left: 10px"/>
-                    <el-text class="mx-1" style="margin-left: 10px" type="primary">新用户？</el-text>
-                    <el-button text type="danger" @click="$router.push('/register')">点击注册</el-button>
+                    <el-text class="mx-1" style="margin-left: 10px" type="primary" size="large" > 新用户？</el-text>
+                    <el-button text type="danger" @click="$router.push('/register')" size="large" >点击注册</el-button>
                     <el-button v-loading.fullscreen.lock="isLoading" :style="{
-    boxShadow: `var(${getCssVarName('light')})`}" style="margin-left: 10px" type="primary" @click="submitForm()">登录
+    boxShadow: `var(${getCssVarName('light')})`}" style="margin-left: 5px" type="primary" size="large" @click="submitForm()">登录
                     </el-button>
 
                     <el-button :style="{
-    boxShadow: `var(${getCssVarName('light')})`}" @click="resetForm">重置
+    boxShadow: `var(${getCssVarName('light')})`}"  type="danger" size="large"  @click="resetForm">重置
                     </el-button>
-
                   </el-form-item>
                 </el-form>
-              </el-form>
             </el-main>
           </el-container>
         </el-main>
@@ -225,30 +213,26 @@ onMounted(() => {
 }
 
 .head {
-  height: 10%;
-  min-height: 200px;
+  height: 30%;
   width: 100%;
   text-align: center;
 }
 
 .aside {
-  height: 30%;
-  width: 30%;
+  width: 55%;
+  padding:0;
+  height: 45%;
 }
 
-.content {
-  margin-left: 35%;
-  margin-right: 3%;
-  height: 30%;
-  width: 35%;
-  padding: 10px;
+.main-content {
+  padding:5px;
+  width: 100%;
+  height: 45%;
 }
 
 .content-form {
-  width: 100%;
-  min-width: 360px;
-  height: 70%;
-  min-height: 250px;
+  width: 80%;
+  height: 100%;
   border-radius: 3px;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -256,21 +240,20 @@ onMounted(() => {
 }
 
 .login-ruleForm {
-  height: 30%;
+  height: 85%;
   width: 100%;
   border-radius: 3px;
   color: white;
 
 }
-
 .head-form {
-  font-size: 15px;
+  font-size: 20px;
   height: 15%;
   width: 100%;
   color: white;
   background-color: #409EFF;
   text-align: center;
-  line-height: 3;
+  line-height: 2;
   border-radius: 3px;
 }
 

@@ -232,12 +232,39 @@
           :before-close="handleClose1"
           title="传输列表"
       >
-        <div>
-          <p></p>
-          <p>下载进度: {{ progress }}%</p>
-          <el-progress :percentage="progress"></el-progress>
-        </div>
-
+        <el-row class="file-row" v-for="(item, index) in fileList" :key="index">
+          <el-col :span=10>
+            <el-text>
+              文件名：{{item.file.file_name+'.'+item.file.file_type}}
+            </el-text>
+          </el-col>
+          <el-col :span=7>
+            <el-text>
+              大小：{{ item.file.file_size}}b
+            </el-text>
+          </el-col>
+          <el-col :span=7>
+            <el-text>
+              速度：{{ item.speed.value}}
+            </el-text>
+          </el-col>
+          <el-col :span=12 style="margin-top: 2px">
+            <el-progress :percentage="item.progress.value"
+                         :stroke-width="20"
+                         :text-inside="true"
+                         striped
+                         striped-flow/>
+          </el-col>
+          <el-col :span="4">
+            <el-button :disabled="item.isPauseDownload.value" size="small" type="warning" @click="pauseDownload(item)">暂停</el-button>
+          </el-col>
+          <el-col :span="4">
+            <el-button :disabled="!item.isPauseDownload.value" size="small" type="primary" @click="resumeDownload(item)">继续</el-button>
+          </el-col>
+          <el-col :span="4">
+            <el-button size="small" type="danger" @click="cancelDownload(item)">取消</el-button>
+          </el-col>
+        </el-row>
       </el-drawer>
 
       <el-drawer v-model="drawer2
@@ -264,10 +291,7 @@
           </div>
         </template>
       </el-drawer>
-
     </el-container>
-
-
   </div>
 </template>
 <style scoped>
@@ -285,7 +309,7 @@
 import {
   Close,
   Delete,
-  Document,
+  Document, Download,
   Files,
   Headset,
   HomeFilled,
@@ -303,9 +327,8 @@ import {
 import {useStore} from 'vuex';
 import {ElMessageBox, ElNotification as notify} from 'element-plus'
 import {useRouter} from "vue-router";
-import {ref} from 'vue'
+import {reactive, ref} from 'vue'
 
-const store = useStore();
 
 const activeIndex = ref('1')
 const handleSelect = (key: string, keyPath: string[]) => {
@@ -324,7 +347,6 @@ const transferDrawer = ref(false)
 const drawer2 = ref(false)
 const notiyDrawer = ref(false)
 const radio1 = ref('Option 1')
-
 const router = useRouter()
 
 interface File {
@@ -336,6 +358,14 @@ interface File {
   file_size: string;
 }
 
+interface FileInfo {
+  file_UUid: string,
+  start: number, // 开始字节
+  length: number, // 结束长度字节
+  state: number
+}
+
+
 const handleClose1 = (done: () => void) => {
   done()
 }
@@ -343,7 +373,6 @@ const handleClose1 = (done: () => void) => {
 const exit = () => {
   localStorage.removeItem('rememberMe');
   router.push('../login')
-
 }
 
 function cancelClick1() {
@@ -366,70 +395,65 @@ function getCssVarName(type: any) {
 }
 
 
-const parentId = store.state.parentId
-let fileBlog = new Blob();
 
-let fileTemp = new Blob()
-let start = 0
-let controller: AbortController; // 用于控制请求取消
-if (controller) {
-  controller.abort();
+interface DownLoadFile {
+  file: File,
+  fileInfo: FileInfo,
+  progress: ref<number>,
+  speed: ref<string>,
+  isPauseDownload: ref<Boolen>,
+  isCancelDownload: ref<Boolean>,
+  fileTemp: Blob,
+  controller: AbortController
 }
-let state = 0
-const handleDownload = (content) => {
-  const row = content.file
 
-  if (!checkUUIDISExits(row.file_UUid)) {
-    notify("该文件FUID不存在，给予下载")
-    state = content.state
-    start = content.start
-    startDownLoad(row, state)
-    FUUIUDs.push(row.file_UUid)
+let fileList =  ref<DownloadFile[]>
+const handleDownload = (content) => {
+  if (!checkUUIDISExits(content.file.file_UUid)) {
+    notify(content.file.file_UUid + "该文件UUID不存在，给予下载")
+    let item: DownLoadFile = {
+      file: content.file,
+      fileInfo: {
+        file_UUid: content.file.file_UUid, // 通常和 file.file_UUid 保持一致
+        start: content.start,
+        length: content.length,
+        state: content.state, // 表示下载状态，例如 0 为未开始，1 为下载中，2 为已完成等
+      },
+      progress: ref(0),
+      speed: ref("0"),
+      isPauseDownload: ref(false), // 创建一个响应式引用表示是否暂停下载
+      isCancelDownload: ref(false),
+      fileTemp: new Blob([]),
+      controller: new AbortController()
+    }
+    fileList.push(item)
+    startDownLoad(item)
   } else {
     notify("该文件已在下载，切勿重新下载")
   }
 };
 //检查下载的FUUID是否存在
 const checkUUIDISExits = (fUuid: String) => {
-  for (let i in FUUIUDs) {
-    if (fUuid == i) {
+  for (let i in fileList) {
+    if (fUuid == fileList[i].file.file_UUid) {
       return true;
     }
   }
   return false;
-
 }
-let progress = 0;
-//FUUID数组
-let FUUIUDs = []
-const startDownLoad = async (row: File, state: number) => {
+const startDownLoad = async (row: DownLoadFile) => {
 // 创建一个新的控制器
-  controller = new AbortController();
-  const signal = controller.signal;
+  const signal = row.controller.signal;
   let chunks: BlobPart[] = [];
-
   try {
     const requestData = {
       user: {
         username: localStorage.getItem('username'),
         password: localStorage.getItem('password')
       },
-      file: {
-        file_UUid: row.file_UUid,
-        file_name: row.file_name,
-        file_type: row.file_type,
-        upload_time: row.upload_time,
-        file_path: row.file_path,
-        file_size: row.file_size
-      },
-      fileInfo: {
-        file_UUid: row.file_UUid,
-        start: start, // 开始字节
-        length: row.file_size, // 结束长度字节
-        state: state
-      }
+      file: row.file,
+      fileInfo: row.fileInfo
     };
-
     // 发起POST请求并处理响应
     const response: Response = await fetch('http://localhost:8080/download', {
       method: 'POST',
@@ -444,42 +468,92 @@ const startDownLoad = async (row: File, state: number) => {
     }
     const reader = response.body.getReader();
     let receivedLength = 0;
+    let lastReceivedLength = 0;
+    if (row.fileTemp.size !== 0) {
+      receivedLength = row.fileTemp.size;
+      lastReceivedLength = receivedLength;
+    }
+    let count = 0;
+    let date = new Date();
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
       chunks.push(value);
       receivedLength += value.length;
+      if (count == 50) {
+        let newDate = new Date();
+        let seconds = (newDate - date) / 1000;
+        let totalLength = receivedLength - lastReceivedLength
+        if (totalLength < 10 * 1024) {
+          row.speed.value = ((totalLength) / seconds).toFixed(2) + "b/s";
+        }
+        else if (totalLength < 10 * 1024 * 1024) {
+          row.speed.value = ((totalLength) / 1024 / seconds).toFixed(2) + 'Kb/s';
+        }
+        else {
+          row.speed.value=  ((totalLength) / 1024 / 1024 / seconds).toFixed(2) + "Mb/s";
+        }
+        row.progress.value = Number((receivedLength / row.file.file_size) * 100).toFixed(2);
+        lastReceivedLength = receivedLength;
+        count = 0;
+        date = newDate;
+      } else {
+        count++;
+      }
     }
     let blob;
-    if (fileBlog.size !== 0) {
-      fileTemp = new Blob(chunks)
-      blob = new Blob([fileBlog, fileTemp])
-      fileBlog = new Blob();// 清空文件
+    if (row.fileTemp.size !== 0) {
+      const fileTemp1 = new Blob(chunks) //注意这里
+      blob = new Blob([row.fileTemp, fileTemp1])
+      row.fileTemp = new Blob();// 组合文件
     } else {
       blob = new Blob(chunks);
     }
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `${row.file_name}.${row.file_type}`;
+    link.download = `${row.file.file_name}.${row.file.file_type}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
+    //重置参数
     chunks = [];
     chunks.length = 0;
-    start = 0
-    notify(`下载，成功一共:${(blob.size / (1024 * 1024)).toFixed(2)}Mb`)
+    row.progress.value = 100;
+    row.speed.value = "0b/s"
+    row.fileTemp = new Blob();
+    row.isPauseDownload = false;
+    const uuidToRemove = row.fileInfo.file_UUid;
+    fileList= fileList.filter(item => item.fileInfo.file_UUid !== uuidToRemove)//去除
+    //格式化网速
+    if (blob < 1024) {
+      notify(`下载成功，本次下载一共:${(blob.size).toFixed(2)}b`)
+    } else if (blob < 1024 * 1024) {
+      notify(`下载成功，本次下载一共:${(blob.size / 1024).toFixed(2)}Kb`)
+    } else {
+      notify(`下载成功，本次下载一共:${(blob.size / (1024 * 1024)).toFixed(2)}Mb`)
+    }
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      // 处理保存已经下载的部分 Blob
-      const blob = new Blob(chunks);
-      start = blob.size
-      if (fileBlog.size == 0) {
-        fileBlog = blob
-      } else {
-        fileBlog = new Blob([fileBlog, blob]) //继续下载
+      if (!row.isCancelDownload.value) {
+        if (row.isPauseDownload.value){
+          const blob = new Blob(chunks);
+          if (row.fileTemp.size == 0) {
+            row.fileTemp = blob
+          } else {
+            row.fileTemp = new Blob([row.fileTemp, blob]) //继续下载
+          }
+          row.fileInfo.start = row.fileTemp.size;
+          notify(`下载暂停，保存已下载部分,一共:${(row.fileTemp.size / (1024 * 1024)).toFixed(2)}Mb`)
+        }
+        else {
+          notify("继续下载错误"+error)
+        }
+
       }
-      notify(`下载取消，保存已下载部分,一共:${(fileBlog.size / (1024 * 1024)).toFixed(2)}Mb`)
+      else {
+        notify("取消下载"+error)
+      }
     } else {
       // 错误处理
       console.error('下载文件时出错:', error);
@@ -487,15 +561,53 @@ const startDownLoad = async (row: File, state: number) => {
   }
 }
 //暂停下载
-const pauseDownload = () => {
-  if (controller) {
-    controller.abort();
+const pauseDownload = (row:DownLoadFile) => {
+  row.isPauseDownload.value = true //植入暂停状态
+  if (row == null) {
+    notify("不存在此下载请求")
+  } else {
+    if (row.controller) {
+      notify("暂停")
+      row.isCancelDownload.value = false
+      row.controller.abort();
+    }
+  }
+
+};
+const resumeDownload = (row: DownLoadFile) => {
+ // row.isCancelDownload = false;//继续时，取消状态返回默认值
+  console.log(row)
+  if (row == null) {
+    notify("不存在此下载请求")
+
+  } else {
+    notify('继续下载从' + row.fileInfo.start + "比特开始")
+    row.controller = new AbortController
+    row.isCancelDownload.value = false
+    row.isPauseDownload.value =  false
+    startDownLoad(<DownLoadFile>row)
   }
 };
-const resumeDownload = (row: File) => {
-  notify('继续下载从' + start + "b开始")
-  startDownLoad(row, 0)
-};
+const cancelDownload = (row) => {
+  if (!row.isCancelDownload.value) {
+    row.isCancelDownload.value= true;
+    if (row == null) {
+      notify("不存在此下载请求")
+    } else {
+      if (row.controller) {
+        row.controller.abort();
+        row.fileInfo.start = 0;
+        row.progress.value= 0
+        row.speed.value = "0b/s"
+        row.fileTemp = new Blob();
+        const uuidToRemove = row.fileInfo.file_UUid;
+        fileList= fileList.filter(item => item.fileInfo.file_UUid !== uuidToRemove)//去除
+      }
+    }
+  } else {
+    notify("嗯，其实已经取消了，重复操作没有意义")
+  }
+}
 </script>
 
 <style>
@@ -506,7 +618,9 @@ const resumeDownload = (row: File) => {
   height: 100%;
   min-height: 700px;
   max-height: 1200px;
-  background-color: white;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 .head {
@@ -515,6 +629,13 @@ const resumeDownload = (row: File) => {
 
 .flex-grow {
   flex-grow: 1;
+}
+
+.file-row {
+  border: 2px solid var(--el-border-color);
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 6px;
 }
 
 </style>
