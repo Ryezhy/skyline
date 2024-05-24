@@ -24,8 +24,9 @@
             <el-menu-item index="1-1">单文件上传</el-menu-item>
             <el-menu-item index="1-2">批量上传</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="2" @click="transferDrawer = true">传输列表</el-menu-item>
-          <el-menu-item index="3">回收站</el-menu-item>
+          <el-menu-item index="2" @click="downloadDrawer = true">下载列表</el-menu-item>
+          <el-menu-item index="3" @click="uploadDrawer = true">上传列表</el-menu-item>
+          <el-menu-item index="4">回收站</el-menu-item>
 
         </el-menu>
       </el-header>
@@ -209,7 +210,7 @@
           <!--内容-->
           <el-col :span="20">
             <div class="grid-content ep-bg-purple-dark"/>
-            <RouterView @clickDownload="handleDownload"></RouterView>
+            <RouterView @changeRouter="changeRouter" @clickDownload="handleDownload"></RouterView>
           </el-col>
 
         </el-row>
@@ -226,47 +227,97 @@
         </el-drawer>
       </el-main>
 
-      <!--传输列表!-->
+      <!--下载列表!-->
       <el-drawer
-          v-model="transferDrawer"
-          :before-close="handleClose1"
-          title="传输列表"
+          v-model="downloadDrawer"
+          title="下载列表"
       >
-        <el-row class="file-row" v-for="(item, index) in fileList" :key="index">
+        <el-row v-for="(item,index) in fileList" class="file-row">
           <el-col :span=10>
             <el-text>
-              文件名：{{item.file.file_name+'.'+item.file.file_type}}
+              文件名：{{ item.value.file.file_name + '.' + item.value.file.file_type }}
             </el-text>
           </el-col>
           <el-col :span=7>
             <el-text>
-              大小：{{ item.file.file_size}}b
+              大小：{{ formatSize(item.value.file.file_size) }}
             </el-text>
           </el-col>
           <el-col :span=7>
             <el-text>
-              速度：{{ item.speed.value}}
+              速度：{{ formatSpeed(item.value.speed) }}
             </el-text>
           </el-col>
           <el-col :span=12 style="margin-top: 2px">
-            <el-progress :percentage="item.progress.value"
+            <el-progress :percentage=item.value.progress
                          :stroke-width="20"
                          :text-inside="true"
                          striped
                          striped-flow/>
           </el-col>
           <el-col :span="4">
-            <el-button :disabled="item.isPauseDownload.value" size="small" type="warning" @click="pauseDownload(item)">暂停</el-button>
+            <el-button :disabled="item.value.isPauseDownload" size="small" type="warning" @click="pauseDownload(index)">
+              暂停
+            </el-button>
           </el-col>
           <el-col :span="4">
-            <el-button :disabled="!item.isPauseDownload.value" size="small" type="primary" @click="resumeDownload(item)">继续</el-button>
+            <el-button :disabled="!item.value.isPauseDownload" size="small" type="primary"
+                       @click="resumeDownload(index)">继续
+            </el-button>
           </el-col>
           <el-col :span="4">
-            <el-button size="small" type="danger" @click="cancelDownload(item)">取消</el-button>
+            <el-button size="small" type="danger" @click="cancelDownload(index)">取消</el-button>
           </el-col>
         </el-row>
       </el-drawer>
 
+      <!--上传列表!-->
+      <el-drawer
+          v-model="uploadDrawer"
+          :title=formatRouter()
+      >
+
+        <el-row v-for="(item,index) in fileList" class="file-row">
+          <el-col :span=10>
+            <el-text>
+              文件名：{{ item.value.file.file_name + '.' + item.value.file.file_type }}
+            </el-text>
+          </el-col>
+          <el-col :span=7>
+            <el-text>
+              大小：{{ formatSize(item.value.file.file_size) }}
+            </el-text>
+          </el-col>
+          <el-col :span=7>
+            <el-text>
+              速度：{{ formatSpeed(item.value.speed) }}
+            </el-text>
+          </el-col>
+          <el-col :span=12 style="margin-top: 2px">
+            <el-progress :percentage=item.value.progress
+                         :stroke-width="20"
+                         :text-inside="true"
+                         striped
+                         striped-flow/>
+          </el-col>
+          <el-col :span="4">
+            <el-button :disabled="item.value.isPauseDownload" size="small" type="warning" @click="pauseDownload(index)">
+              暂停
+            </el-button>
+          </el-col>
+          <el-col :span="4">
+            <el-button :disabled="!item.value.isPauseDownload" size="small" type="primary"
+                       @click="resumeDownload(index)">继续
+            </el-button>
+          </el-col>
+          <el-col :span="4">
+            <el-button size="small" type="danger" @click="cancelDownload(index)">取消</el-button>
+          </el-col>
+        </el-row>
+        <el-button @click="diyUploadPath(1)">自定义上传地址上传</el-button>
+        <el-button @click="diyUploadPath(0)">使用当前访问地址上传</el-button>
+
+      </el-drawer>
       <el-drawer v-model="drawer2
 ">
         <template #header>
@@ -309,7 +360,7 @@
 import {
   Close,
   Delete,
-  Document, Download,
+  Document,
   Files,
   Headset,
   HomeFilled,
@@ -324,15 +375,15 @@ import {
   User,
   VideoCamera,
 } from '@element-plus/icons-vue'
-import {useStore} from 'vuex';
 import {ElMessageBox, ElNotification as notify} from 'element-plus'
 import {useRouter} from "vue-router";
-import {reactive, ref} from 'vue'
+import {ref, UnwrapRef} from 'vue'
+import {ElMessage, ElTable} from 'element-plus'
 
 
 const activeIndex = ref('1')
 const handleSelect = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
+  // console.log(key, keyPath)
 }
 const isCollapse = ref(true)
 const handleOpen = (key: string, keyPath: string[]) => {
@@ -341,34 +392,25 @@ const handleOpen = (key: string, keyPath: string[]) => {
 const handleClose = (key: string, keyPath: string[]) => {
   console.log(key, keyPath)
 }
+const formatSize = (size: UnwrapRef<File["file_size"]>) => {//处理文件大小显示
+  if (size > 1024 * 1024 * 1024) {
+    return (size / (1024 * 1024 * 1024)).toFixed(2) + "GB";
+  } else if (size > (1024 * 1024)) {
+    return (size / (1024 * 1024)).toFixed(2) + "MB";
+  } else if (size > 1024) {
+    return (size / 1024).toFixed(2) + "KB";
+  } else {
+    return size + "B";
+  }
+}
 
-
-const transferDrawer = ref(false)
+const downloadDrawer = ref(false)
+const uploadDrawer = ref(false)
 const drawer2 = ref(false)
 const notiyDrawer = ref(false)
 const radio1 = ref('Option 1')
 const router = useRouter()
 
-interface File {
-  file_UUid: string;
-  file_name: string;
-  file_type: string;
-  upload_time: string;
-  file_path: string;
-  file_size: string;
-}
-
-interface FileInfo {
-  file_UUid: string,
-  start: number, // 开始字节
-  length: number, // 结束长度字节
-  state: number
-}
-
-
-const handleClose1 = (done: () => void) => {
-  done()
-}
 
 const exit = () => {
   localStorage.removeItem('rememberMe');
@@ -394,56 +436,81 @@ function getCssVarName(type: any) {
 
 }
 
-
-
-interface DownLoadFile {
-  file: File,
-  fileInfo: FileInfo,
-  progress: ref<number>,
-  speed: ref<string>,
-  isPauseDownload: ref<Boolen>,
-  isCancelDownload: ref<Boolean>,
-  fileTemp: Blob,
-  controller: AbortController
+const fileRouter = ref<string[]>([]);//路径路由数组
+const changeRouter = (content) => {
+  fileRouter.value = content;
+  console.log(fileRouter.value)
 }
 
-let fileList =  ref<DownloadFile[]>
-const handleDownload = (content) => {
-  if (!checkUUIDISExits(content.file.file_UUid)) {
-    notify(content.file.file_UUid + "该文件UUID不存在，给予下载")
-    let item: DownLoadFile = {
+
+type  File = {
+  file_UUid: string;
+  file_name: string;
+  file_type: string;
+  upload_time: string;
+  file_path: string;
+  file_size: string;
+}
+
+type FileInfo = {
+  file_UUid: string,
+  start: number, // 开始字节
+  length: number, // 结束长度字节
+  state: number
+}
+
+
+type DownLoadFile = {
+  file: File;
+  fileInfo: FileInfo;
+  progress: number;
+  speed: number;
+  isPauseDownload: boolean;
+  isCancelDownload: boolean;
+  fileTemp: Blob | null; // 假设初始时 fileTemp 可能是 null
+  controller: AbortController | null; // 同样，controller 也可能是 null
+}
+
+let fileList = ref<ref<DownLoadFile>[]>([])
+const handleDownload = async (content) => {
+  if (checkUUIDISExits(content.file.file_UUid)) {
+    notify({
+      title: '提示',
+      message: '该文件已存在',
+      type: 'warning',
+      duration: 2000
+    })
+  } else {
+    const item = ref<DownLoadFile>({
       file: content.file,
       fileInfo: {
-        file_UUid: content.file.file_UUid, // 通常和 file.file_UUid 保持一致
-        start: content.start,
-        length: content.length,
-        state: content.state, // 表示下载状态，例如 0 为未开始，1 为下载中，2 为已完成等
+        file_UUid: content.file_UUid,
+        start: 0,
+        length: Number(content.file.file_size),
+        state: 0
       },
-      progress: ref(0),
-      speed: ref("0"),
-      isPauseDownload: ref(false), // 创建一个响应式引用表示是否暂停下载
-      isCancelDownload: ref(false),
-      fileTemp: new Blob([]),
+      progress: 0,
+      speed: 0,
+      isPauseDownload: false,
+      isCancelDownload: false,
+      fileTemp: new Blob(),
       controller: new AbortController()
-    }
-    fileList.push(item)
-    startDownLoad(item)
-  } else {
-    notify("该文件已在下载，切勿重新下载")
+    })
+    fileList.value.push(item)
+    await startDownLoad(item)
   }
 };
 //检查下载的FUUID是否存在
 const checkUUIDISExits = (fUuid: String) => {
-  for (let i in fileList) {
-    if (fUuid == fileList[i].file.file_UUid) {
+  for (let i in fileList.value) {
+    if (fUuid == fileList.value[i].value.file.file_UUid) {
       return true;
     }
   }
   return false;
 }
-const startDownLoad = async (row: DownLoadFile) => {
-// 创建一个新的控制器
-  const signal = row.controller.signal;
+const startDownLoad = async (item: ref<DownLoadFile>) => {
+  const signal = item.value.controller.signal;
   let chunks: BlobPart[] = [];
   try {
     const requestData = {
@@ -451,8 +518,8 @@ const startDownLoad = async (row: DownLoadFile) => {
         username: localStorage.getItem('username'),
         password: localStorage.getItem('password')
       },
-      file: row.file,
-      fileInfo: row.fileInfo
+      file: item.value.file,
+      fileInfo: item.value.fileInfo
     };
     // 发起POST请求并处理响应
     const response: Response = await fetch('http://localhost:8080/download', {
@@ -469,8 +536,8 @@ const startDownLoad = async (row: DownLoadFile) => {
     const reader = response.body.getReader();
     let receivedLength = 0;
     let lastReceivedLength = 0;
-    if (row.fileTemp.size !== 0) {
-      receivedLength = row.fileTemp.size;
+    if (item.value.fileTemp.size !== 0) {
+      receivedLength = item.value.fileTemp.size
       lastReceivedLength = receivedLength;
     }
     let count = 0;
@@ -480,20 +547,18 @@ const startDownLoad = async (row: DownLoadFile) => {
       if (done) break;
       chunks.push(value);
       receivedLength += value.length;
-      if (count == 50) {
+      if (count == 800) {
         let newDate = new Date();
         let seconds = (newDate - date) / 1000;
         let totalLength = receivedLength - lastReceivedLength
         if (totalLength < 10 * 1024) {
-          row.speed.value = ((totalLength) / seconds).toFixed(2) + "b/s";
+          item.value.speed = Number(((totalLength) / seconds).toFixed(2));
+        } else if (totalLength < 10 * 1024 * 1024) {
+          item.value.speed = Number(((totalLength) / 1024 / seconds).toFixed(2));
+        } else {
+          item.value.speed = Number(((totalLength) / 1024 / 1024 / seconds).toFixed(2));
         }
-        else if (totalLength < 10 * 1024 * 1024) {
-          row.speed.value = ((totalLength) / 1024 / seconds).toFixed(2) + 'Kb/s';
-        }
-        else {
-          row.speed.value=  ((totalLength) / 1024 / 1024 / seconds).toFixed(2) + "Mb/s";
-        }
-        row.progress.value = Number((receivedLength / row.file.file_size) * 100).toFixed(2);
+        item.value.progress = Number(((receivedLength / item.value.file.file_size) * 100).toFixed(2));
         lastReceivedLength = receivedLength;
         count = 0;
         date = newDate;
@@ -502,29 +567,31 @@ const startDownLoad = async (row: DownLoadFile) => {
       }
     }
     let blob;
-    if (row.fileTemp.size !== 0) {
-      const fileTemp1 = new Blob(chunks) //注意这里
-      blob = new Blob([row.fileTemp, fileTemp1])
-      row.fileTemp = new Blob();// 组合文件
+    if (item.value.fileTemp.size !== 0) {
+      const fileTemp1 = new Blob(chunks)
+      blob = new Blob([item.value.fileTemp, fileTemp1])
+      item.fileTemp = new Blob();// 组合文件
     } else {
       blob = new Blob(chunks);
     }
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `${row.file.file_name}.${row.file.file_type}`;
+    link.download = `${item.value.file.file_name}.${item.value.file.file_type}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     //重置参数
     chunks = [];
     chunks.length = 0;
-    row.progress.value = 100;
-    row.speed.value = "0b/s"
-    row.fileTemp = new Blob();
-    row.isPauseDownload = false;
-    const uuidToRemove = row.fileInfo.file_UUid;
-    fileList= fileList.filter(item => item.fileInfo.file_UUid !== uuidToRemove)//去除
+    item.value.speed = 0;
+    item.value.progress = 100;
+    console.log(fileList.value)
+    const index = fileList.value.indexOf(item);
+    if (index !== -1) {
+      fileList.value = fileList.value.filter((_, i) => i !== index);
+    }
+    console.log(fileList.value)
     //格式化网速
     if (blob < 1024) {
       notify(`下载成功，本次下载一共:${(blob.size).toFixed(2)}b`)
@@ -535,24 +602,22 @@ const startDownLoad = async (row: DownLoadFile) => {
     }
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      if (!row.isCancelDownload.value) {
-        if (row.isPauseDownload.value){
+      if (!item.value.isCancelDownload) {
+        console.log(item)
+        if (item.value.isPauseDownload) {
           const blob = new Blob(chunks);
-          if (row.fileTemp.size == 0) {
-            row.fileTemp = blob
+          if (item.value.fileTemp.size == 0) {
+            item.value.fileTemp = blob
           } else {
-            row.fileTemp = new Blob([row.fileTemp, blob]) //继续下载
+            item.value.fileTemp = new Blob([item.value.fileTemp, blob]) //继续下载
           }
-          row.fileInfo.start = row.fileTemp.size;
-          notify(`下载暂停，保存已下载部分,一共:${(row.fileTemp.size / (1024 * 1024)).toFixed(2)}Mb`)
+          item.value.fileInfo.start = item.value.fileTemp.size;
+          notify(`下载暂停，保存已下载部分,一共:${(item.value.fileTemp.size / (1024 * 1024)).toFixed(2)}Mb`)
+        } else {
+          notify("继续下载错误:" + error.name)
         }
-        else {
-          notify("继续下载错误"+error)
-        }
-
-      }
-      else {
-        notify("取消下载"+error)
+      } else {
+        notify("取消下载:" + error)
       }
     } else {
       // 错误处理
@@ -561,53 +626,102 @@ const startDownLoad = async (row: DownLoadFile) => {
   }
 }
 //暂停下载
-const pauseDownload = (row:DownLoadFile) => {
-  row.isPauseDownload.value = true //植入暂停状态
-  if (row == null) {
+const pauseDownload = (index: number) => {
+  const item = fileList.value[index]
+  console.log("Object：")
+  console.log(item)
+  item.value.isPauseDownload = true//植入暂停状态
+  if (item.value == null) {
     notify("不存在此下载请求")
   } else {
-    if (row.controller) {
+    if (item.value.controller) {
       notify("暂停")
-      row.isCancelDownload.value = false
-      row.controller.abort();
+      item.value.isCancelDownload = false;
+      item.value.controller.abort();
     }
   }
-
 };
-const resumeDownload = (row: DownLoadFile) => {
- // row.isCancelDownload = false;//继续时，取消状态返回默认值
-  console.log(row)
-  if (row == null) {
+const resumeDownload = (index: number) => {
+  const item = fileList.value[index]
+  console.log("OBject：")
+  if (item.value == null) {
     notify("不存在此下载请求")
 
   } else {
-    notify('继续下载从' + row.fileInfo.start + "比特开始")
-    row.controller = new AbortController
-    row.isCancelDownload.value = false
-    row.isPauseDownload.value =  false
-    startDownLoad(<DownLoadFile>row)
+    notify('继续下载从' + item.value.fileInfo.start + "比特开始")
+    item.value.controller = new AbortController()
+    item.value.isCancelDownload = false
+    item.value.isPauseDownload = false
+    startDownLoad(item)
   }
 };
-const cancelDownload = (row) => {
-  if (!row.isCancelDownload.value) {
-    row.isCancelDownload.value= true;
-    if (row == null) {
+const cancelDownload = (index: number) => {
+  const item = fileList.value[index]
+  console.log(item)
+  if (!item.value.isCancelDownload) {
+    item.value.isCancelDownload = true;
+    if (item.value == null) {
       notify("不存在此下载请求")
     } else {
-      if (row.controller) {
-        row.controller.abort();
-        row.fileInfo.start = 0;
-        row.progress.value= 0
-        row.speed.value = "0b/s"
-        row.fileTemp = new Blob();
-        const uuidToRemove = row.fileInfo.file_UUid;
-        fileList= fileList.filter(item => item.fileInfo.file_UUid !== uuidToRemove)//去除
+      if (item.value.controller) {
+        item.value.controller.abort();
+        item.value.fileInfo.start = 0;
+        item.value.speed = 0;
+        item.value.progress = 0;
+        item.value.controller = null;
+        if (index !== -1) {
+          fileList.value = fileList.value.filter((_, i) => i !== index);
+        }
       }
     }
   } else {
     notify("嗯，其实已经取消了，重复操作没有意义")
   }
 }
+
+const formatSpeed = (speed: number) => {
+  if (speed < 1024) {
+    return speed.toFixed(2) + "kb/s"
+  }
+  if (speed < 1024 * 1024) {
+    return (speed / 1024).toFixed(2) + "Mb/s"
+  }
+}
+
+const uploadPath = ref<string>("")
+const uploadPathType = ref<number>(0)
+const formatRouter = () => {
+  if (uploadPathType.value == 0) { //默认路径
+    uploadPath.value = fileRouter.value.join("")
+    if (uploadPath.value.length == 0) {
+      return "未选择地址"
+    }
+    return "默认当前路径：" + uploadPath.value
+  } else { // 自定义路径
+    if (uploadPath.value.length == 0) {
+      return "未选择地址"
+    }
+    return "自定义路径：DIY"
+  }
+
+}
+const diyUploadPath = (val) => {
+  if (val == 1) {
+    if (uploadPath.value.length == 0) {
+      ElMessage.error('未选择地址');
+
+    }
+
+    uploadPathType.value = 1;
+  } else {
+    if (uploadPath.value.length == 0) {
+      ElMessage.error('未选择地址');
+
+    }
+    uploadPathType.value = 0;
+  }
+}
+
 </script>
 
 <style>

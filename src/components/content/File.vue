@@ -180,7 +180,7 @@ let options = ref([ // 定义选项列表
   { value: 2, label: '2' }
 ])
 //资源定义
-interface File {
+type  File= {
   file_UUid: string;
   file_name: string;
   file_type: string;
@@ -346,6 +346,7 @@ const handleCurrentChange = (val: number) => { //页码更改
 const handleRouterBack = () => {  //路径后退事件
   if(fileRouter.value.length>1) {
     fileRouter.value.pop();
+    emit("changeRouter",fileRouter.value)
   }
   const routerArray = fileRouter.value;
   let path =  routerArray.join('');    // 使用join方法将数组元素用''连接起来
@@ -443,9 +444,9 @@ let param = {
   length:0,
   state:0,
 }
-import { defineEmits } from 'vue'
+
 // 使用defineEmits创建名称，接受一个数组
-const emit = defineEmits(['clickDownload'])
+const emit = defineEmits(['clickDownload','changeRouter'])
 const handleDownload = async (row:File,state:number) => {
   //传递param到父组件
   param.file = row
@@ -474,6 +475,7 @@ async function fetchData() { //获取根目录
     fileRouter.value= []
     const username = '/'+localStorage.getItem('username');
     fileRouter.value.push(username);
+    emit("changeRouter",fileRouter.value)
     // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
     const response = await axios.get('http://localhost:8080/files/root');
     tableData.value = response.data;
@@ -493,6 +495,7 @@ async function fetchDataFromServer(fileItem:File) { //获取子目录
     // 模拟数据加载过程
     await new Promise(resolve => setTimeout(resolve, 500));
     fileRouter.value.push("/"+fileItem.file_name)
+    emit("changeRouter",fileRouter.value)
     let user = { //获取存储的用户信息
       username: localStorage.getItem('username'),
       password: localStorage.getItem('password')
