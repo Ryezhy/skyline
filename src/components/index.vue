@@ -17,16 +17,9 @@
             Skyline
           </el-menu-item>
           <div class="flex-grow"/>
-          <el-sub-menu index="1">
-            <template #title>
-              上传文件
-            </template>
-            <el-menu-item index="1-1">单文件上传</el-menu-item>
-            <el-menu-item index="1-2">批量上传</el-menu-item>
-          </el-sub-menu>
-          <el-menu-item index="2" @click="downloadDrawer = true">下载列表</el-menu-item>
-          <el-menu-item index="3" @click="uploadDrawer = true">上传列表</el-menu-item>
-          <el-menu-item index="4">回收站</el-menu-item>
+          <el-menu-item index="1" @click="downloadDrawer = true">下载列表</el-menu-item>
+          <el-menu-item index="2" @click="uploadDrawer = true">上传列表</el-menu-item>
+          <el-menu-item index="3">回收站</el-menu-item>
 
         </el-menu>
       </el-header>
@@ -276,23 +269,28 @@
           v-model="uploadDrawer"
           :title=formatRouter()
       >
-
         <el-row v-for="(item,index) in fileList" class="file-row">
-          <el-col :span=10>
+          <el-col :span=12>
             <el-text>
               文件名：{{ item.value.file.file_name + '.' + item.value.file.file_type }}
             </el-text>
           </el-col>
-          <el-col :span=7>
+          <el-col :span="12">
+            <el-text size="default" style="color: red">
+              上传路径：/test/test
+            </el-text>
+          </el-col>
+          <el-col :span=12>
             <el-text>
               大小：{{ formatSize(item.value.file.file_size) }}
             </el-text>
           </el-col>
-          <el-col :span=7>
+          <el-col :span=12>
             <el-text>
               速度：{{ formatSpeed(item.value.speed) }}
             </el-text>
           </el-col>
+
           <el-col :span=12 style="margin-top: 2px">
             <el-progress :percentage=item.value.progress
                          :stroke-width="20"
@@ -300,6 +298,7 @@
                          striped
                          striped-flow/>
           </el-col>
+
           <el-col :span="4">
             <el-button :disabled="item.value.isPauseDownload" size="small" type="warning" @click="pauseDownload(index)">
               暂停
@@ -313,9 +312,16 @@
           <el-col :span="4">
             <el-button size="small" type="danger" @click="cancelDownload(index)">取消</el-button>
           </el-col>
+
         </el-row>
-        <el-button @click="diyUploadPath(1)">自定义上传地址上传</el-button>
-        <el-button @click="diyUploadPath(0)">使用当前访问地址上传</el-button>
+        <el-row >
+          <el-col :span="24">
+            <el-button type="warning" @click="diyUploadPath(1)">自定义上传地址</el-button>
+            <el-button type="primary" @click="handleUpload(0)">上传单文件</el-button>
+            <el-button type="primary" @click="handleUpload(1)">上传多文件</el-button>
+          </el-col>
+
+        </el-row>
 
       </el-drawer>
       <el-drawer v-model="drawer2
@@ -342,6 +348,97 @@
           </div>
         </template>
       </el-drawer>
+      <el-dialog
+          v-model="diyDialogVisible"
+          :before-close="divDialogHandleClose"
+          :title="diyDialogTitle"
+          style="align-items: center;border-radius: 10px;padding: 20px"
+          width="670"
+      >
+        <span>
+              <el-table :data="diyTableData" style="width: 100%;margin-bottom: 10px">
+                  <el-table-column label="文件名" width="230">
+                    <template v-slot:default="scope">{{ scope.row.file_name }}</template>
+                  </el-table-column>
+                  <el-table-column label="创建日期" width="300">
+                    <template v-slot:default="scope">{{ scope.row.upload_time }}</template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="100">
+                     <template v-slot:default="scope">
+                        <el-button type="text" @click="diyGetFolder(scope.row)">打开</el-button>
+                       <el-button type="text"
+                                  @click="diySelectFolder(scope.row.file_path+'/'+scope.row.file_name)">选择</el-button>
+                     </template>
+                  </el-table-column>
+              </el-table>
+              <el-button type="warning" @click="toLastDivPath">
+                返回上一级
+              </el-button>
+              <el-button type="primary" @click="diySelectFolder(diyDialogTitle)">
+                选择当前目录
+              </el-button>
+              <el-button type="success" @click="diyToRoot">
+                返回根目录
+              </el-button>
+              <el-button type="danger">
+                创建新的文件夹
+              </el-button>
+        </span>
+      </el-dialog>
+      <el-dialog
+          v-model="mUploadDialogVisible"
+          :before-close="mUploadDialogHandleClose"
+          :title="mUploadDialogTitle"
+          width="670"
+          style="align-items: center;border-radius: 10px;padding: 20px"
+      >
+        <span>
+          <el-upload
+              ref="mUploadRef"
+              action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
+              :auto-upload="false"
+          >
+            <template #tip>
+              <div class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+            </template>
+            <template #trigger >
+                  <el-button type="primary">选择文件</el-button>
+            </template>
+            <div style="padding: 0;margin: 0 0  0 10px;display: inline-flex">
+              <el-button   type="primary" @click="submitUpload">上传文件</el-button>
+            </div>
+          </el-upload>
+        </span>
+      </el-dialog>
+      <el-dialog
+          v-model="sUploadDialogVisible"
+          :before-close="sUploadDialogHandleClose"
+          :title="sUploadDialogTitle"
+          width="670"
+
+          style="align-items: center;border-radius: 10px;padding: 20px"
+      >
+        <span>
+          <el-upload
+              ref="sUploadRef"
+              action="http://localhost:8080/upload-chunk"
+              :headers="ContentType"
+              :limit="1"
+              :on-exceed="handleExceed"
+              :auto-upload="false"
+          >
+            <template #tip>
+              <div>只能上传jpg/png文件，且不超过500kb</div>
+            </template>
+            <template #trigger >
+                  <el-button type="primary">选择文件</el-button>
+            </template>
+            <div style="padding: 0;margin: 0 0  0 10px;display: inline-flex">
+              <el-button   type="primary" @click="submitUpload">上传文件</el-button>
+            </div>
+          </el-upload>
+        </span>
+      </el-dialog>
     </el-container>
   </div>
 </template>
@@ -375,74 +472,14 @@ import {
   User,
   VideoCamera,
 } from '@element-plus/icons-vue'
-import {ElMessageBox, ElNotification as notify} from 'element-plus'
+import {ElMessage, ElMessageBox, ElNotification as notify, ElTable} from 'element-plus'
 import {useRouter} from "vue-router";
 import {ref, UnwrapRef} from 'vue'
-import {ElMessage, ElTable} from 'element-plus'
+import axios from "axios";
+import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
+import { genFileId } from 'element-plus'
 
-
-const activeIndex = ref('1')
-const handleSelect = (key: string, keyPath: string[]) => {
-  // console.log(key, keyPath)
-}
-const isCollapse = ref(true)
-const handleOpen = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
-}
-const handleClose = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
-}
-const formatSize = (size: UnwrapRef<File["file_size"]>) => {//处理文件大小显示
-  if (size > 1024 * 1024 * 1024) {
-    return (size / (1024 * 1024 * 1024)).toFixed(2) + "GB";
-  } else if (size > (1024 * 1024)) {
-    return (size / (1024 * 1024)).toFixed(2) + "MB";
-  } else if (size > 1024) {
-    return (size / 1024).toFixed(2) + "KB";
-  } else {
-    return size + "B";
-  }
-}
-
-const downloadDrawer = ref(false)
-const uploadDrawer = ref(false)
-const drawer2 = ref(false)
-const notiyDrawer = ref(false)
-const radio1 = ref('Option 1')
-const router = useRouter()
-
-
-const exit = () => {
-  localStorage.removeItem('rememberMe');
-  router.push('../login')
-}
-
-function cancelClick1() {
-  drawer2.value = false
-}
-
-function confirmClick1() {
-  ElMessageBox.confirm(`Are you confirm to chose ${radio1.value} ?`)
-      .then(() => {
-        drawer2.value = false
-      })
-      .catch(() => {
-        // catch error
-      })
-}
-
-function getCssVarName(type: any) {
-  return `--el-box-shadow${type ? '-' : ''}${type}`
-
-}
-
-const fileRouter = ref<string[]>([]);//路径路由数组
-const changeRouter = (content) => {
-  fileRouter.value = content;
-  console.log(fileRouter.value)
-}
-
-
+//-----------------------------------------类型定义-------------------------------------------------
 type  File = {
   file_UUid: string;
   file_name: string;
@@ -471,8 +508,89 @@ type DownLoadFile = {
   controller: AbortController | null; // 同样，controller 也可能是 null
 }
 
-let fileList = ref<ref<DownLoadFile>[]>([])
-const handleDownload = async (content) => {
+const activeIndex = ref('1')
+const handleSelect = (key: string, keyPath: string[]) => {
+  // console.log(key, keyPath)
+}
+const isCollapse = ref(true)
+const handleOpen = (key: string, keyPath: string[]) => {
+  console.log(key, keyPath)
+}
+const handleClose = (key: string, keyPath: string[]) => {
+  console.log(key, keyPath)
+}
+
+const downloadDrawer = ref(false)
+const uploadDrawer = ref(false)
+const drawer2 = ref(false)
+const notiyDrawer = ref(false)
+const radio1 = ref('Option 1')
+const router = useRouter()
+
+//----------------------------------格式化---------------------------------------------------///
+const formatRouter = () => { //路由格式化
+    if (uploadPath.value.length == 0) {
+      return "未选择地址"
+    }
+    return '选择的上传路径：' + uploadPath.value
+}
+const formatSpeed = (speed: number) => { //网速格式化
+  if (speed < 1024) {
+    return speed.toFixed(2) + "kb/s"
+  }
+  if (speed < 1024 * 1024) {
+    return (speed / 1024).toFixed(2) + "Mb/s"
+  }
+}
+
+const formatSize = (size: UnwrapRef<File["file_size"]>) => {//处理文件大小显示
+  if (size > 1024 * 1024 * 1024) {
+    return (size / (1024 * 1024 * 1024)).toFixed(2) + "GB";
+  } else if (size > (1024 * 1024)) {
+    return (size / (1024 * 1024)).toFixed(2) + "MB";
+  } else if (size > 1024) {
+    return (size / 1024).toFixed(2) + "KB";
+  } else {
+    return size + "B";
+  }
+}
+
+//---------------------------------------------------页面跳转操作-----------------------------------
+const exit = () => { //退出
+  localStorage.removeItem('rememberMe');
+  router.push('../login')
+}
+
+function cancelClick1() {
+  drawer2.value = false
+}
+
+function confirmClick1() {
+  ElMessageBox.confirm(`Are you confirm to chose ${radio1.value} ?`)
+      .then(() => {
+        drawer2.value = false
+      })
+      .catch(() => {
+        // catch error
+      })
+}
+
+function getCssVarName(type: any) {
+  return `--el-box-shadow${type ? '-' : ''}${type}`
+
+}
+
+
+//--------------------------------------------下载逻辑处理----------------------------------------------------------------------
+
+const fileRouter = ref<string[]>([]);//路径路由数组
+const changeRouter = (content) => {//改变路由操作
+  fileRouter.value = content;
+  console.log(fileRouter.value)
+}
+
+let fileList = ref<ref<DownLoadFile>[]>([]) //下载文件列表
+const handleDownload = async (content) => { //点击下载逻辑
   if (checkUUIDISExits(content.file.file_UUid)) {
     notify({
       title: '提示',
@@ -500,8 +618,7 @@ const handleDownload = async (content) => {
     await startDownLoad(item)
   }
 };
-//检查下载的FUUID是否存在
-const checkUUIDISExits = (fUuid: String) => {
+const checkUUIDISExits = (fUuid: String) => {//检查重复下载逻辑
   for (let i in fileList.value) {
     if (fUuid == fileList.value[i].value.file.file_UUid) {
       return true;
@@ -509,7 +626,7 @@ const checkUUIDISExits = (fUuid: String) => {
   }
   return false;
 }
-const startDownLoad = async (item: ref<DownLoadFile>) => {
+const startDownLoad = async (item: ref<DownLoadFile>) => { //开始下载逻辑
   const signal = item.value.controller.signal;
   let chunks: BlobPart[] = [];
   try {
@@ -626,7 +743,7 @@ const startDownLoad = async (item: ref<DownLoadFile>) => {
   }
 }
 //暂停下载
-const pauseDownload = (index: number) => {
+const pauseDownload = (index: number) => { //暂停下载逻辑
   const item = fileList.value[index]
   console.log("Object：")
   console.log(item)
@@ -641,7 +758,7 @@ const pauseDownload = (index: number) => {
     }
   }
 };
-const resumeDownload = (index: number) => {
+const resumeDownload = (index: number) => {//继续下载逻辑
   const item = fileList.value[index]
   console.log("OBject：")
   if (item.value == null) {
@@ -655,7 +772,7 @@ const resumeDownload = (index: number) => {
     startDownLoad(item)
   }
 };
-const cancelDownload = (index: number) => {
+const cancelDownload = (index: number) => { //取消下载逻辑
   const item = fileList.value[index]
   console.log(item)
   if (!item.value.isCancelDownload) {
@@ -679,49 +796,181 @@ const cancelDownload = (index: number) => {
   }
 }
 
-const formatSpeed = (speed: number) => {
-  if (speed < 1024) {
-    return speed.toFixed(2) + "kb/s"
+//-----------------------------------------------------上传逻辑处理-------------------------------------------------------------------------
+
+const uploadPath = ref<string>("")//上传路径
+const diyDialogTitle = ref("Null")//自定义路径
+const diyDialogVisible = ref(false)//自定义路径选择对话框的可视化
+
+const diyTableData = ref<File[]>([]) //定义文件列表数据
+diyTableData.value = [  //根目录初始化
+  {
+    file_UUid: '',
+    file_name: '',
+    file_type: '',
+    upload_time: '',
+    file_path: '',
+    file_size: ''
   }
-  if (speed < 1024 * 1024) {
-    return (speed / 1024).toFixed(2) + "Mb/s"
+]
+let pathTemp = "" //临时存储路径
+const diyPathList = ref<string[]>([localStorage.getItem('username')]) //路径列表，最后一个节点是当前访问的文件夹
+
+const diySelectFolder = (path: string) => { //选择文件夹
+  if (path == "") {
+    ElMessage.error('未选择地址');
+  } else {
+    pathTemp = path
   }
+  if (pathTemp == ""){
+    notify("未选择地址");
+  }
+  uploadPath.value = pathTemp
+  diyDialogVisible.value = false
 }
 
-const uploadPath = ref<string>("")
-const uploadPathType = ref<number>(0)
-const formatRouter = () => {
-  if (uploadPathType.value == 0) { //默认路径
-    uploadPath.value = fileRouter.value.join("")
-    if (uploadPath.value.length == 0) {
-      return "未选择地址"
-    }
-    return "默认当前路径：" + uploadPath.value
-  } else { // 自定义路径
-    if (uploadPath.value.length == 0) {
-      return "未选择地址"
-    }
-    return "自定义路径：DIY"
-  }
-
+const diyToRoot = () => {
+  diyPathList.value = [localStorage.getItem('username')]
+  let file = {
+    file_UUid: '',
+    file_name: '',
+    file_type: '',
+    upload_time: '',
+    file_path: '/' + localStorage.getItem('username'),
+    file_size: ''
+  };
+  diyGetFolder(file)
 }
-const diyUploadPath = (val) => {
+const diyUploadPath = (val) => {//打开对话框的初始化逻辑
+  console.log(fileRouter.value)
   if (val == 1) {
     if (uploadPath.value.length == 0) {
       ElMessage.error('未选择地址');
-
     }
+    diyDialogVisible.value = true//打开自定义文件路径对话框
+    //开始获取初始文件夹列表
+    let file = {
+      file_UUid: '',
+      file_name: '',
+      file_type: '',
+      upload_time: '',
+      file_path: '',
+      file_size: ''
+    };
+    if (diyPathList.value.length == 1) {
+      file.file_path = '/' + localStorage.getItem('username')
+    } else {
+      file.file_name = diyPathList.value.pop()
+      file.file_path = '/' + diyPathList.value.join("/")
+    }
+    diyGetFolder(file)
 
-    uploadPathType.value = 1;
   } else {
     if (uploadPath.value.length == 0) {
       ElMessage.error('未选择地址');
-
     }
-    uploadPathType.value = 0;
+  }
+}
+const toLastDivPath = () => {//返回上一级文件夹
+  let file = {
+    file_UUid: '',
+    file_name: '',
+    file_type: '',
+    upload_time: '',
+    file_path: '',
+    file_size: ''
+  }
+  if (diyPathList.value.length == 2) {//返回根目录的路径
+    file.file_path = '/' + localStorage.getItem('username')
+    diyPathList.value.pop()
+    diyGetFolder(file)
+  } else if (diyPathList.value.length > 2) { //返回非根目录
+    diyPathList.value.pop() //弹出一级
+    file.file_name =  diyPathList.value.pop() //取出访问的文件夹名
+    file.file_path = '/' +  diyPathList.value.join('/') //访问的文件夹的父路径
+    diyGetFolder(file)//访问该文件夹下的所有文件夹
+  }
+}
+const diyGetFolder = (file: File) => {//获取文件夹列表
+  let user = {
+    id: -1,
+    username: localStorage.getItem('username'),
+    password: localStorage.getItem('password')
+  };
+  axios.post('http://localhost:8080/folders', {user, file})
+      .then(response => {
+        // isLoading.value = false;
+        // 检查HTTP状态码
+        if (response.status === 200) {
+          diyTableData.value = response.data;
+          if (file.file_name == "") {
+            diyDialogTitle.value = '/' + user.username; //根目录
+          } else {
+            diyPathList.value.push(file.file_name)
+            diyDialogTitle.value = '/' + diyPathList.value.join('/'); //非根目录
+          }
+        } else {
+          // 其他未知错误
+          notify("发生未知错误，请重试");
+          console.log('发生未知错误，请重试');
+        }
+      })
+      .catch(error => {
+        notify("服务器返回错误状态码：" + error);
+        console.log('服务器返回错误状态码：', error);
+      });
+
+}
+const divDialogHandleClose = () => { //关闭对话框处理
+  diyDialogVisible.value = false
+}
+
+const mUploadDialogVisible = ref(false)
+const mUploadDialogTitle = ref("上传多文件")
+const mUploadDialogHandleClose = () => {
+  mUploadDialogVisible.value = false
+
+}
+const sUploadDialogVisible = ref(false)
+const sUploadDialogTitle = ref("上传单文件")
+const sUploadDialogHandleClose = () => {
+  sUploadDialogVisible.value = false
+
+}
+const handleUpload = (val)=>{
+  if (val == 0){
+    sUploadDialogVisible.value = true
+  }else {
+    mUploadDialogVisible.value = true
   }
 }
 
+const sUploadRef = ref<UploadInstance>()
+const handleExceed: UploadProps['onExceed'] = (files) => {
+  sUploadRef.value!.clearFiles()
+  const file = files[0] as UploadRawFile
+  file.uid = genFileId()
+  sUploadRef.value!.handleStart(file)
+}
+const submitUpload = () => {
+  sUploadRef.value.submit()
+}
+const ContentType = ref<Headers>(<Headers>new Headers())
+const uploadData = {
+  file: null,
+  file_name: '',
+  file_type: '',
+  file_size: '',
+  file_path: '',
+  file_UUid: '',
+  upload_time: '',
+  user: {
+    id: -1,
+    username: localStorage.getItem('username'),
+    password: localStorage.getItem('password')
+  }
+}
+ContentType.value.append('Content-Type', 'application/json')
 </script>
 
 <style>

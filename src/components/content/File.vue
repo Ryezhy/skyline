@@ -13,13 +13,9 @@
         <el-col :span="10">
           <el-breadcrumb   separator="">
             <el-breadcrumb-item
-                v-for="(item, index) in formattedBreadcrumbItems"
-                :key="index"
-                :class="{ 'last-breadcrumb-item': index === formattedBreadcrumbItems.length - 1 }"
-                @click="handleRouterClick(item, index)"
                 style="margin-left: -11px"
             >
-              {{ item }}
+              {{ formattedBreadcrumbItems }}
             </el-breadcrumb-item>
           </el-breadcrumb>
         </el-col>
@@ -348,13 +344,7 @@ const handleRouterBack = () => {  //路径后退事件
     fileRouter.value.pop();
     emit("changeRouter",fileRouter.value)
   }
-  const routerArray = fileRouter.value;
-  let path =  routerArray.join('');    // 使用join方法将数组元素用''连接起来
-
-  if(fileRouter.value.length==1){
-    path = '/admin'
-    notify("主目录")
-  }
+  let path = '/'+ fileRouter.value.join('/');    // 使用join方法将数组元素用''连接起来
   let user = {
     username: localStorage.getItem('username'),
     password: localStorage.getItem('password')
@@ -459,10 +449,10 @@ const formattedBreadcrumbItems = computed(() => {// 计算属性来格式化路�
   const items = [...fileRouter.value]; // 创建数组的一个副本
   if (items.length > 3) {
     // 如果路径段数超过三段，只保留前三段，并添加省略号
-    const lastThreeItems = items.slice(-3); // 获取最后三段
+    const lastThreeItems = items.slice(-3).join('/'); // 获取最后三段
     return ['...'].concat(lastThreeItems); // 在前面添加省略号
   }
-  return items;
+  return '/'+fileRouter.value.join('/')
 });
 const handleRouterClick= (item: any, index: any) => { //路径点击事件
 }
@@ -473,8 +463,8 @@ async function fetchData() { //获取根目录
     // 模拟数据加载过程
     await new Promise(resolve => setTimeout(resolve, 500));
     fileRouter.value= []
-    const username = '/'+localStorage.getItem('username');
-    fileRouter.value.push(username);
+    const username = localStorage.getItem('username');
+    fileRouter.value.push(username+"");
     emit("changeRouter",fileRouter.value)
     // 在这里，你可以替换为实际的 API 调用或其他数据加载逻辑
     const response = await axios.get('http://localhost:8080/files/root');
@@ -494,7 +484,7 @@ async function fetchDataFromServer(fileItem:File) { //获取子目录
   try {
     // 模拟数据加载过程
     await new Promise(resolve => setTimeout(resolve, 500));
-    fileRouter.value.push("/"+fileItem.file_name)
+    fileRouter.value.push(fileItem.file_name)
     emit("changeRouter",fileRouter.value)
     let user = { //获取存储的用户信息
       username: localStorage.getItem('username'),
