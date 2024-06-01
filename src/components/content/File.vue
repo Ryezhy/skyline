@@ -438,11 +438,17 @@ let param = {
 // 使用defineEmits创建名称，接受一个数组
 const emit = defineEmits(['clickDownload','changeRouter'])
 const handleDownload = async (row:File,state:number) => {
-  //传递param到父组件
-  param.file = row
-  param.length = Number(row.file_size)
-  param.state = state
-  emit('clickDownload', param)
+  if(row.file_type!="Folder"){
+    //传递param到父组件
+    param.file = row
+    param.length = Number(row.file_size)
+    param.state = state
+    emit('clickDownload', param)
+  }else {
+    notify("文件夹下载还在开发中")
+  }
+
+
 }
 
 const formattedBreadcrumbItems = computed(() => {// 计算属性来格式化路径数组
